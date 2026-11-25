@@ -52,8 +52,8 @@ class VideoSprite extends FlxSpriteGroup {
 		{
 			/*
 			#if hxvlc
-			var wd:Int = videoSprite.bitmap.formatWidth;
-			var hg:Int = videoSprite.bitmap.formatHeight;
+			var wd:Int = videoSprite.bitmap.bitmapData.width;
+			var hg:Int = videoSprite.bitmap.bitmapData.height;
 			trace('Video Resolution: ${wd}x${hg}');
 			videoSprite.scale.set(FlxG.width / wd, FlxG.height / hg);
 			#end
