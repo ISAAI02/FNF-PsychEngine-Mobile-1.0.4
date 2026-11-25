@@ -82,6 +82,8 @@ class StageData {
 			#if MODS_ALLOWED
 			if(FileSystem.exists(path))
 				return cast tjson.TJSON.parse(File.getContent(path));
+			else if(Assets.exists(path))
+				return cast tjson.TJSON.parse(Assets.getText(path));
 			#else
 			if(Assets.exists(path))
 				return cast tjson.TJSON.parse(Assets.getText(path));

@@ -91,8 +91,8 @@ class CopyState extends MusicBeatState
 		{
 			for (file in locatedFiles)
 			{
-				loopTimes++;
 				copyAsset(file);
+				loopTimes++;
 			}
 		});
 		new FlxTimer().start(0.5, (tmr) ->
@@ -136,30 +136,31 @@ class CopyState extends MusicBeatState
 		super.update(elapsed);
 	}
 
+	inline private static function getTargetPath(file:String):String
+	{
+		#if android
+		if (file.startsWith('mods/'))
+			return StorageUtil.getExternalStorageDirectory() + file;
+		#end
+		return file;
+	}
+
 	public function copyAsset(file:String)
 	{
-		if (!FileSystem.exists(file))
+		var targetPath:String = getTargetPath(file);
+		if (!FileSystem.exists(targetPath))
 		{
-			var directory = Path.directory(file);
-			if (!FileSystem.exists(directory))
+			var directory = Path.directory(targetPath);
+			if (directory.length > 0 && !FileSystem.exists(directory))
 				FileSystem.createDirectory(directory);
 			try
 			{
 				if (OpenFLAssets.exists(getFile(file)))
 				{
-					if (textFilesExtensions.contains(Path.extension(file)))
+					if (textFilesExtensions.contains(Path.extension(file).toLowerCase()))
 						createContentFromInternal(file);
 					else
-					{
-						var path:String = '';
-						#if android
-						if (file.startsWith('mods/'))
-							path = StorageUtil.getExternalStorageDirectory() + file;
-						else
-						#end
-							path = file;
-						File.saveBytes(path, getFileBytes(getFile(file)));
-					}		
+						File.saveBytes(targetPath, getFileBytes(getFile(file)));
 				}
 				else
 				{
@@ -177,18 +178,15 @@ class CopyState extends MusicBeatState
 
 	public function createContentFromInternal(file:String)
 	{
-		var fileName = Path.withoutDirectory(file);
-		var directory = Path.directory(file);
-		#if android
-		if (fileName.startsWith('mods/'))
-			directory = StorageUtil.getExternalStorageDirectory() + directory;
-		#end
+		var targetPath:String = getTargetPath(file);
+		var fileName = Path.withoutDirectory(targetPath);
+		var directory = Path.directory(targetPath);
 		try
 		{
 			var fileData:String = OpenFLAssets.getText(getFile(file));
 			if (fileData == null)
 				fileData = '';
-			if (!FileSystem.exists(directory))
+			if (directory.length > 0 && !FileSystem.exists(directory))
 				FileSystem.createDirectory(directory);
 			File.saveContent(Path.join([directory, fileName]), fileData);
 		}
@@ -233,12 +231,7 @@ class CopyState extends MusicBeatState
 		var assets = locatedFiles.filter(folder -> folder.startsWith('assets/'));
 		var mods = locatedFiles.filter(folder -> folder.startsWith('mods/'));
 		locatedFiles = assets.concat(mods);
-		locatedFiles = locatedFiles.filter(file -> !FileSystem.exists(file));
-		#if android
-		for (file in locatedFiles)
-			if (file.startsWith('mods/'))
-				locatedFiles = locatedFiles.filter(file -> !FileSystem.exists(StorageUtil.getExternalStorageDirectory() + file));
-		#end
+		locatedFiles = locatedFiles.filter(file -> !FileSystem.exists(getTargetPath(file)));
 
 		var filesToRemove:Array<String> = [];
 

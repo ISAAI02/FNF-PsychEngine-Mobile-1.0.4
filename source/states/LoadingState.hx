@@ -707,7 +707,8 @@ class LoadingState extends MusicBeatState
 		{
 			var path:String = Paths.getPath('characters/$char.json', TEXT);
 			#if MODS_ALLOWED
-			var character:Dynamic = Json.parse(File.getContent(path));
+			var rawChar:String = FileSystem.exists(path) ? File.getContent(path) : Assets.getText(path);
+			var character:Dynamic = Json.parse(rawChar);
 			#else
 			var character:Dynamic = Json.parse(Assets.getText(path));
 			#end
@@ -767,9 +768,10 @@ class LoadingState extends MusicBeatState
 		//trace('precaching sound: $file');
 		if(!Paths.currentTrackedSounds.exists(file))
 		{
-			if (#if sys FileSystem.exists(file) || #end OpenFlAssets.exists(file, SOUND))
+			var hasSysFile:Bool = #if sys FileSystem.exists(file) #else false #end;
+			if (hasSysFile || OpenFlAssets.exists(file, SOUND))
 			{
-				var sound:Sound = #if sys Sound.fromFile(file) #else OpenFlAssets.getSound(file, false) #end;
+				var sound:Sound = #if sys hasSysFile ? Sound.fromFile(file) : OpenFlAssets.getSound(file, false) #else OpenFlAssets.getSound(file, false) #end;
 				mutex.acquire();
 				Paths.currentTrackedSounds.set(file, sound);
 				mutex.release();
@@ -799,10 +801,11 @@ class LoadingState extends MusicBeatState
 			if (!Paths.currentTrackedAssets.exists(requestKey))
 			{
 				var file:String = Paths.getPath(requestKey, IMAGE);
-				if (#if sys FileSystem.exists(file) || #end OpenFlAssets.exists(file, IMAGE))
+				var hasSysFile:Bool = #if sys FileSystem.exists(file) #else false #end;
+				if (hasSysFile || OpenFlAssets.exists(file, IMAGE))
 				{
 					#if sys
-					var bitmap:BitmapData = BitmapData.fromFile(file);
+					var bitmap:BitmapData = hasSysFile ? BitmapData.fromFile(file) : OpenFlAssets.getBitmapData(file, false);
 					#else
 					var bitmap:BitmapData = OpenFlAssets.getBitmapData(file, false);
 					#end

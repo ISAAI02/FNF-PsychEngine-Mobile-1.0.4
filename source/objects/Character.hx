@@ -110,11 +110,7 @@ class Character extends FlxSprite
 		var characterPath:String = 'characters/$character.json';
 
 		var path:String = Paths.getPath(characterPath, TEXT);
-		#if MODS_ALLOWED
-		if (!FileSystem.exists(path))
-		#else
-		if (!Assets.exists(path))
-		#end
+		if (#if MODS_ALLOWED !FileSystem.exists(path) && #end !Assets.exists(path))
 		{
 			path = Paths.getSharedPath('characters/' + DEFAULT_CHARACTER + '.json'); //If a character couldn't be found, change him to BF just to prevent a crash
 			missingCharacter = true;
@@ -125,7 +121,7 @@ class Character extends FlxSprite
 		try
 		{
 			#if MODS_ALLOWED
-			loadCharacterFile(Json.parse(File.getContent(path)));
+			loadCharacterFile(Json.parse(FileSystem.exists(path) ? File.getContent(path) : Assets.getText(path)));
 			#else
 			loadCharacterFile(Json.parse(Assets.getText(path)));
 			#end

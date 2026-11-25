@@ -49,6 +49,7 @@ class CoolUtil
 		var daList:String = null;
 		#if (sys && MODS_ALLOWED)
 		if(FileSystem.exists(path)) daList = File.getContent(path);
+		else if(Assets.exists(path)) daList = Assets.getText(path);
 		#else
 		if(Assets.exists(path)) daList = Assets.getText(path);
 		#end

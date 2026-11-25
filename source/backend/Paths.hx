@@ -287,12 +287,12 @@ class Paths
 
 	inline static public function getTextFromFile(key:String, ?ignoreMods:Bool = false):String
 	{
-		var path:String = getPath(key, TEXT, !ignoreMods);
+		var path:String = getPath(key, TEXT, null, !ignoreMods);
 		#if sys
-		return (FileSystem.exists(path)) ? File.getContent(path) : null;
-		#else
-		return (OpenFlAssets.exists(path, TEXT)) ? Assets.getText(path) : null;
+		if (FileSystem.exists(path))
+			return File.getContent(path);
 		#end
+		return (OpenFlAssets.exists(path, TEXT)) ? Assets.getText(path) : null;
 	}
 
 	inline static public function font(key:String)
@@ -316,15 +316,15 @@ class Paths
 			for(mod in Mods.getGlobalMods())
 				if (FileSystem.exists(mods('$mod/$modKey')))
 					return true;
-				#if linux
-				else if (FileSystem.exists(findFile('$mod/$modKey')))
+				#if (linux || android)
+				else if (findFile('$mod/$modKey') != null)
 					return true;
 				#end
 
 			if (FileSystem.exists(mods(Mods.currentModDirectory + '/' + modKey)) || FileSystem.exists(mods(modKey)))
 				return true;
-			#if linux
-			else if (FileSystem.exists(findFile(modKey)))
+			#if (linux || android)
+			else if (findFile(modKey) != null)
 				return true;
 			#end
 		}
@@ -385,12 +385,12 @@ class Paths
 		if(key.contains('psychic')) trace(key, parentFolder, allowGPU);
 		var imageLoaded:FlxGraphic = image(key, parentFolder, allowGPU);
 		#if MODS_ALLOWED
-		var xmlExists:Bool = false;
-
 		var xml:String = modsXml(key);
-		if(FileSystem.exists(xml)) xmlExists = true;
+		if(FileSystem.exists(xml))
+			return FlxAtlasFrames.fromSparrow(imageLoaded, File.getContent(xml));
 
-		return FlxAtlasFrames.fromSparrow(imageLoaded, (xmlExists ? File.getContent(xml) : getPath(Language.getFileTranslation('images/$key') + '.xml', TEXT, parentFolder)));
+		var fallbackXml:String = getPath(Language.getFileTranslation('images/$key') + '.xml', TEXT, parentFolder);
+		return FlxAtlasFrames.fromSparrow(imageLoaded, FileSystem.exists(fallbackXml) ? File.getContent(fallbackXml) : fallbackXml);
 		#else
 		return FlxAtlasFrames.fromSparrow(imageLoaded, getPath(Language.getFileTranslation('images/$key') + '.xml', TEXT, parentFolder));
 		#end
@@ -400,12 +400,12 @@ class Paths
 	{
 		var imageLoaded:FlxGraphic = image(key, parentFolder, allowGPU);
 		#if MODS_ALLOWED
-		var txtExists:Bool = false;
-		
 		var txt:String = modsTxt(key);
-		if(FileSystem.exists(txt)) txtExists = true;
+		if(FileSystem.exists(txt))
+			return FlxAtlasFrames.fromSpriteSheetPacker(imageLoaded, File.getContent(txt));
 
-		return FlxAtlasFrames.fromSpriteSheetPacker(imageLoaded, (txtExists ? File.getContent(txt) : getPath(Language.getFileTranslation('images/$key') + '.txt', TEXT, parentFolder)));
+		var fallbackTxt:String = getPath(Language.getFileTranslation('images/$key') + '.txt', TEXT, parentFolder);
+		return FlxAtlasFrames.fromSpriteSheetPacker(imageLoaded, FileSystem.exists(fallbackTxt) ? File.getContent(fallbackTxt) : fallbackTxt);
 		#else
 		return FlxAtlasFrames.fromSpriteSheetPacker(imageLoaded, getPath(Language.getFileTranslation('images/$key') + '.txt', TEXT, parentFolder));
 		#end
@@ -415,12 +415,12 @@ class Paths
 	{
 		var imageLoaded:FlxGraphic = image(key, parentFolder, allowGPU);
 		#if MODS_ALLOWED
-		var jsonExists:Bool = false;
-
 		var json:String = modsImagesJson(key);
-		if(FileSystem.exists(json)) jsonExists = true;
+		if(FileSystem.exists(json))
+			return FlxAtlasFrames.fromTexturePackerJson(imageLoaded, File.getContent(json));
 
-		return FlxAtlasFrames.fromTexturePackerJson(imageLoaded, (jsonExists ? File.getContent(json) : getPath(Language.getFileTranslation('images/$key') + '.json', TEXT, parentFolder)));
+		var fallbackJson:String = getPath(Language.getFileTranslation('images/$key') + '.json', TEXT, parentFolder);
+		return FlxAtlasFrames.fromTexturePackerJson(imageLoaded, FileSystem.exists(fallbackJson) ? File.getContent(fallbackJson) : fallbackJson);
 		#else
 		return FlxAtlasFrames.fromTexturePackerJson(imageLoaded, getPath(Language.getFileTranslation('images/$key') + '.json', TEXT, parentFolder));
 		#end
@@ -444,10 +444,8 @@ class Paths
 			#if sys
 			if(FileSystem.exists(file))
 				currentTrackedSounds.set(file, Sound.fromFile(file));
-			#else
-			if(OpenFlAssets.exists(file, SOUND))
+			else #end if(OpenFlAssets.exists(file, SOUND))
 				currentTrackedSounds.set(file, OpenFlAssets.getSound(file));
-			#end
 			else if(beepOnNull)
 			{
 				trace('SOUND NOT FOUND: $key, PATH: $path');
@@ -491,11 +489,11 @@ class Paths
 			var fileToCheck:String = mods(Mods.currentModDirectory + '/' + key);
 			if(FileSystem.exists(fileToCheck))
 				return fileToCheck;
-			#if linux
+			#if (linux || android)
 			else
 			{
 				var newPath:String = findFile(key);
-				if (newPath != null)
+				if (newPath != null && FileSystem.exists(newPath))
 					return newPath;
 			}
 			#end
@@ -506,32 +504,36 @@ class Paths
 			var fileToCheck:String = mods(mod + '/' + key);
 			if(FileSystem.exists(fileToCheck))
 				return fileToCheck;
-			#if linux
+			#if (linux || android)
 			else
 			{
 				var newPath:String = findFile(key);
-				if (newPath != null)
+				if (newPath != null && FileSystem.exists(newPath))
 					return newPath;
 			}
 			#end
 		}
+		#if (linux || android)
+		var fallbackModPath:String = findFile(key);
+		if (fallbackModPath != null && FileSystem.exists(fallbackModPath))
+			return fallbackModPath;
+		#end
 		return (#if android StorageUtil.getExternalStorageDirectory() + #else Sys.getCwd() + #end 'mods/' + key);
 	}
 
-	#if linux
+	#if (linux || android)
 	static function findFile(key:String):String {
-		var targetParts:Array<String> = key.replace('\\', '/').split('/');
+		var targetParts:Array<String> = key.replace('\\', '/').split('/').filter(p -> p != '');
 		if (targetParts.length == 0) return null;
 
-		var baseDir:String = targetParts.shift();
-		var searchDirs:Array<String> = [
-			mods(Mods.currentModDirectory + '/' + baseDir),
-			mods(baseDir)
-		];
+		var searchDirs:Array<String> = [];
+		if (Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+			searchDirs.push(haxe.io.Path.removeTrailingSlashes(mods(Mods.currentModDirectory)));
+		for (mod in Mods.getGlobalMods())
+			searchDirs.push(haxe.io.Path.removeTrailingSlashes(mods(mod)));
+		searchDirs.push(haxe.io.Path.removeTrailingSlashes(mods()));
 
 		for (part in targetParts) {
-			if (part == '') continue;
-
 			var nextDir:String = findNodeInDirs(searchDirs, part);
 			if (nextDir == null) {
 				return null;
@@ -540,7 +542,7 @@ class Paths
 			searchDirs = [nextDir];
 		}
 
-		return searchDirs[0];
+		return FileSystem.exists(searchDirs[0]) ? searchDirs[0] : null;
 	}
 
 	static function findNodeInDirs(dirs:Array<String>, key:String):String {
@@ -643,22 +645,32 @@ class Paths
 
 	public static function readDirectory(directory:String):Array<String>
 	{
-		#if MODS_ALLOWED
-		return FileSystem.readDirectory(directory);
-		#else
 		var dirs:Array<String> = [];
-		for(dir in Assets.list().filter(folder -> folder.startsWith(directory)))
+		#if MODS_ALLOWED
+		if(FileSystem.exists(directory) && FileSystem.isDirectory(directory))
 		{
-			@:privateAccess
-			for(library in lime.utils.Assets.libraries.keys())
+			for(entry in FileSystem.readDirectory(directory))
+				if(!dirs.contains(entry))
+					dirs.push(entry);
+		}
+		#end
+		var normalized:String = haxe.io.Path.removeTrailingSlashes(directory.replace('\\', '/'));
+		if(normalized.startsWith('assets/'))
+		{
+			var prefix:String = normalized + '/';
+			for(asset in OpenFlAssets.list())
 			{
-				if(library != 'default' && Assets.exists('$library:$dir') && (!dirs.contains('$library:$dir') || !dirs.contains(dir)))
-					dirs.push('$library:$dir');
-				else if(Assets.exists(dir) && !dirs.contains(dir))
-					dirs.push(dir);
+				var cleanAsset:String = asset.contains(':') ? asset.split(':')[1] : asset;
+				if(cleanAsset.startsWith(prefix))
+				{
+					var rest:String = cleanAsset.substr(prefix.length);
+					var slashIdx:Int = rest.indexOf('/');
+					var entryName:String = slashIdx >= 0 ? rest.substr(0, slashIdx) : rest;
+					if(entryName.length > 0 && !dirs.contains(entryName))
+						dirs.push(entryName);
+				}
 			}
 		}
-		return dirs.map(dir -> dir.substr(dir.lastIndexOf("/") + 1));
-		#end
+		return dirs;
 	}
 }

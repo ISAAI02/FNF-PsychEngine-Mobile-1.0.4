@@ -868,7 +868,7 @@ class PlayState extends MusicBeatState
 		var fileName:String = Paths.video(name);
 
 		#if sys
-		if (FileSystem.exists(fileName))
+		if (FileSystem.exists(fileName) || OpenFlAssets.exists(fileName))
 		#else
 		if (OpenFlAssets.exists(fileName))
 		#end

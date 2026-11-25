@@ -128,20 +128,62 @@ class MobileData
 	public static function readDirectory(folder:String, map:Dynamic)
 	{
 		folder = folder.contains(':') ? folder.split(':')[1] : folder;
+		var normalizedFolder:String = Path.removeTrailingSlashes(folder.replace('\\', '/'));
 
-		#if MODS_ALLOWED if (FileSystem.exists(folder)) #end
-		for (file in Paths.readDirectory(folder))
+		// 1. Always load built-in modes from internal APK/OpenFL Assets first as a guaranteed base
+		for (assetFile in Assets.list())
 		{
-			var fileWithNoLib:String = file.contains(':') ? file.split(':')[1] : file;
-			if (Path.extension(fileWithNoLib) == 'json')
+			var assetNoLib:String = assetFile.contains(':') ? assetFile.split(':')[1] : assetFile;
+			if (assetNoLib.startsWith(normalizedFolder + '/') && Path.extension(assetNoLib).toLowerCase() == 'json')
 			{
-				file = Path.join([folder, Path.withoutDirectory(file)]);
-				var str = #if MODS_ALLOWED File.getContent(file) #else Assets.getText(file) #end;
-				var json:TouchButtonsData = cast Json.parse(str);
-				var mapKey:String = Path.withoutDirectory(Path.withoutExtension(fileWithNoLib));
-				map.set(mapKey, json);
+				try
+				{
+					var str:String = Assets.getText(assetFile);
+					if (str != null && str.trim().length > 0)
+					{
+						var json:TouchButtonsData = cast Json.parse(str);
+						var mapKey:String = Path.withoutDirectory(Path.withoutExtension(assetNoLib));
+						map.set(mapKey, json);
+					}
+				}
+				catch (e:Dynamic)
+				{
+					trace('Error parsing internal mobile data "$assetFile": $e');
+				}
 			}
 		}
+
+		// 2. Override or extend with external/modded files on disk if present
+		#if MODS_ALLOWED
+		if (FileSystem.exists(folder) && FileSystem.isDirectory(folder))
+		{
+			for (file in FileSystem.readDirectory(folder))
+			{
+				var fileWithNoLib:String = file.contains(':') ? file.split(':')[1] : file;
+				if (Path.extension(fileWithNoLib).toLowerCase() == 'json')
+				{
+					var fullPath:String = Path.join([folder, Path.withoutDirectory(file)]);
+					try
+					{
+						if (FileSystem.exists(fullPath) && !FileSystem.isDirectory(fullPath))
+						{
+							var str:String = File.getContent(fullPath);
+							if (str != null && str.trim().length > 0)
+							{
+								var json:TouchButtonsData = cast Json.parse(str);
+								var mapKey:String = Path.withoutDirectory(Path.withoutExtension(fileWithNoLib));
+								map.set(mapKey, json);
+							}
+						}
+					}
+					catch (e:Dynamic)
+					{
+						trace('Error parsing external mobile data "$fullPath": $e');
+					}
+				}
+			}
+		}
+		#end
 	}
 
 	static function set_mode(mode:Int = 3)

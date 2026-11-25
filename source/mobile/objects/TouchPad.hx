@@ -82,31 +82,47 @@ class TouchPad extends MobileInputManager implements IMobileControls
 	{
 		super();
 
-		if (DPad != "NONE")
-		{
-			if (!MobileData.dpadModes.exists(DPad))
-				throw Language.getPhrase('touchpad_dpadmode_missing', 'The touchPad dpadMode "{1}" doesn\'t exist.', [DPad]);
+		if (!MobileData.dpadModes.iterator().hasNext() || !MobileData.actionModes.iterator().hasNext())
+			MobileData.init();
 
-			for (buttonData in MobileData.dpadModes.get(DPad).buttons)
+		DPad = (DPad == null || DPad.trim().length == 0) ? "NONE" : DPad.trim();
+		Action = (Action == null || Action.trim().length == 0) ? "NONE" : Action.trim();
+
+		if (DPad.toUpperCase() != "NONE")
+		{
+			var resolvedDPad:String = resolveModeKey(MobileData.dpadModes, DPad);
+			if (resolvedDPad != null)
 			{
-				Reflect.setField(this, buttonData.button,
-					createButton(buttonData.x, buttonData.y, buttonData.graphic, CoolUtil.colorFromString(buttonData.color),
-						Reflect.getProperty(this, buttonData.button).IDs));
-				add(Reflect.field(this, buttonData.button));
+				for (buttonData in MobileData.dpadModes.get(resolvedDPad).buttons)
+				{
+					Reflect.setField(this, buttonData.button,
+						createButton(buttonData.x, buttonData.y, buttonData.graphic, CoolUtil.colorFromString(buttonData.color),
+							Reflect.getProperty(this, buttonData.button).IDs));
+					add(Reflect.field(this, buttonData.button));
+				}
+			}
+			else
+			{
+				trace(Language.getPhrase('touchpad_dpadmode_missing', 'The touchPad dpadMode "{1}" doesn\'t exist.', [DPad]));
 			}
 		}
 
-		if (Action != "NONE")
+		if (Action.toUpperCase() != "NONE")
 		{
-			if (!MobileData.actionModes.exists(Action))
-				throw Language.getPhrase('touchpad_actionmode_missing', 'The touchPad actionMode "{1}" doesn\'t exist.', [DPad]);
-
-			for (buttonData in MobileData.actionModes.get(Action).buttons)
+			var resolvedAction:String = resolveModeKey(MobileData.actionModes, Action);
+			if (resolvedAction != null)
 			{
-				Reflect.setField(this, buttonData.button,
-					createButton(buttonData.x, buttonData.y, buttonData.graphic, CoolUtil.colorFromString(buttonData.color),
-						Reflect.getProperty(this, buttonData.button).IDs));
-				add(Reflect.field(this, buttonData.button));
+				for (buttonData in MobileData.actionModes.get(resolvedAction).buttons)
+				{
+					Reflect.setField(this, buttonData.button,
+						createButton(buttonData.x, buttonData.y, buttonData.graphic, CoolUtil.colorFromString(buttonData.color),
+							Reflect.getProperty(this, buttonData.button).IDs));
+					add(Reflect.field(this, buttonData.button));
+				}
+			}
+			else
+			{
+				trace(Language.getPhrase('touchpad_actionmode_missing', 'The touchPad actionMode "{1}" doesn\'t exist.', [Action]));
 			}
 		}
 
@@ -211,6 +227,23 @@ class TouchPad extends MobileInputManager implements IMobileControls
 		button.onDown.callback = () -> onButtonDown.dispatch(button);
 		button.onOut.callback = button.onUp.callback = () -> onButtonUp.dispatch(button);
 		return button;
+	}
+
+	private static function resolveModeKey(map:Map<String, TouchButtonsData>, key:String):Null<String>
+	{
+		if (map.exists(key))
+			return key;
+
+		var upper:String = key.toUpperCase();
+		if (map.exists(upper))
+			return upper;
+
+		for (k in map.keys())
+		{
+			if (k.toUpperCase() == upper)
+				return k;
+		}
+		return null;
 	}
 
 	override function set_alpha(Value):Float

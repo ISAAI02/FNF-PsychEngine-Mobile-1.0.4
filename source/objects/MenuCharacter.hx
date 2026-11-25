@@ -49,13 +49,9 @@ class MenuCharacter extends FlxSprite
 				var characterPath:String = 'images/menucharacters/' + character + '.json';
 
 				var path:String = Paths.getPath(characterPath, TEXT);
-				#if MODS_ALLOWED
-				if (!FileSystem.exists(path))
-				#else
-				if (!Assets.exists(path))
-				#end
+				if (#if MODS_ALLOWED !FileSystem.exists(path) && #end !Assets.exists(path))
 				{
-					path = Paths.getSharedPath('characters/' + DEFAULT_CHARACTER + '.json'); //If a character couldn't be found, change him to BF just to prevent a crash
+					path = Paths.getSharedPath('images/menucharacters/' + DEFAULT_CHARACTER + '.json'); //If a character couldn't be found, change him to BF just to prevent a crash
 					color = FlxColor.BLACK;
 					alpha = 0.6;
 				}
@@ -64,7 +60,7 @@ class MenuCharacter extends FlxSprite
 				try
 				{
 					#if MODS_ALLOWED
-					charFile = Json.parse(File.getContent(path));
+					charFile = Json.parse(FileSystem.exists(path) ? File.getContent(path) : Assets.getText(path));
 					#else
 					charFile = Json.parse(Assets.getText(path));
 					#end

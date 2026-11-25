@@ -60,10 +60,10 @@ class DialogueCharacter extends FlxSprite
 			path = Paths.getSharedPath(characterPath);
 		}
 
-		if(!FileSystem.exists(path)) {
+		if(!FileSystem.exists(path) && !Assets.exists(path)) {
 			path = Paths.getSharedPath('images/dialogue/' + DEFAULT_CHARACTER + '.json');
 		}
-		rawJson = File.getContent(path);
+		rawJson = FileSystem.exists(path) ? File.getContent(path) : Assets.getText(path);
 
 		#else
 		var path:String = Paths.getSharedPath(characterPath);
