@@ -75,7 +75,13 @@ class Main extends Sprite
 		#end
 
 		#if VIDEOS_ALLOWED
-		hxvlc.util.Handle.init();
+		hxvlc.util.Handle.initAsync(null, function(success:Bool):Void
+		{
+			if (success)
+				trace('[HXVLC] LibVLC instance initialized!');
+			else
+				trace('[HXVLC] LibVLC instance failed to initialize!');
+		});
 		#end
 
 		#if LUA_ALLOWED

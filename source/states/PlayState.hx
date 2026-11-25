@@ -877,7 +877,15 @@ class PlayState extends MusicBeatState
 		if (foundFile)
 		{
 			videoCutscene = new VideoSprite(fileName, forMidSong, canSkip, loop);
-			if(forMidSong) videoCutscene.videoSprite.bitmap.rate = playbackRate;
+			if(forMidSong && videoCutscene.videoSprite.bitmap != null)
+			{
+				videoCutscene.videoSprite.bitmap.rate = playbackRate;
+				videoCutscene.videoSprite.bitmap.onOpening.add(function()
+				{
+					if(videoCutscene != null && videoCutscene.videoSprite != null && videoCutscene.videoSprite.bitmap != null)
+						videoCutscene.videoSprite.bitmap.rate = playbackRate;
+				});
+			}
 
 			// Finish callback
 			if (!forMidSong)
@@ -1611,6 +1619,10 @@ class PlayState extends MusicBeatState
 				vocals.pause();
 				opponentVocals.pause();
 			}
+			#if VIDEOS_ALLOWED
+			if (videoCutscene != null)
+				videoCutscene.pause();
+			#end
 			FlxTimer.globalManager.forEach(function(tmr:FlxTimer) if(!tmr.finished) tmr.active = false);
 			FlxTween.globalManager.forEach(function(twn:FlxTween) if(!twn.finished) twn.active = false);
 		}
@@ -1630,6 +1642,10 @@ class PlayState extends MusicBeatState
 			{
 				resyncVocals();
 			}
+			#if VIDEOS_ALLOWED
+			if (videoCutscene != null)
+				videoCutscene.resume();
+			#end
 			FlxTimer.globalManager.forEach(function(tmr:FlxTimer) if(!tmr.finished) tmr.active = true);
 			FlxTween.globalManager.forEach(function(twn:FlxTween) if(!twn.finished) twn.active = true);
 

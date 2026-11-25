@@ -48,19 +48,21 @@ class VideoSprite extends FlxSpriteGroup {
 		// callbacks
 		if(!shouldLoop) videoSprite.bitmap.onEndReached.add(finishVideo);
 
+		videoSprite.bitmap.onEncounteredError.add(function(msg:String)
+		{
+			trace('Video Error: $msg');
+			finishVideo();
+		});
+
 		videoSprite.bitmap.onFormatSetup.add(function()
 		{
-			/*
-			#if hxvlc
-			var wd:Int = videoSprite.bitmap.bitmapData.width;
-			var hg:Int = videoSprite.bitmap.bitmapData.height;
-			trace('Video Resolution: ${wd}x${hg}');
-			videoSprite.scale.set(FlxG.width / wd, FlxG.height / hg);
-			#end
-			*/
-			videoSprite.setGraphicSize(FlxG.width);
-			videoSprite.updateHitbox();
-			videoSprite.screenCenter();
+			if (videoSprite.bitmap != null && videoSprite.bitmap.bitmapData != null)
+			{
+				final scale:Float = Math.min(FlxG.width / videoSprite.bitmap.bitmapData.width, FlxG.height / videoSprite.bitmap.bitmapData.height);
+				videoSprite.setGraphicSize(videoSprite.bitmap.bitmapData.width * scale, videoSprite.bitmap.bitmapData.height * scale);
+				videoSprite.updateHitbox();
+				videoSprite.screenCenter();
+			}
 		});
 
 		// start video and adjust resolution to screen size
@@ -73,12 +75,17 @@ class VideoSprite extends FlxSpriteGroup {
 		if(alreadyDestroyed)
 			return;
 
+		alreadyDestroyed = true;
+
 		trace('Video destroyed');
 		if(cover != null)
 		{
 			remove(cover);
 			cover.destroy();
 		}
+
+		if(videoSprite != null)
+			videoSprite.stop();
 		
 		finishCallback = null;
 		onSkip = null;
@@ -92,7 +99,6 @@ class VideoSprite extends FlxSpriteGroup {
 				FlxG.state.subState.remove(this);
 		}
 		super.destroy();
-		alreadyDestroyed = true;
 	}
 	function finishVideo()
 	{
@@ -121,9 +127,11 @@ class VideoSprite extends FlxSpriteGroup {
 
 			if(holdingTime >= _timeToSkip)
 			{
-				if(onSkip != null) onSkip();
+				var skipCb = onSkip;
 				finishCallback = null;
-				videoSprite.bitmap.onEndReached.dispatch();
+				onSkip = null;
+				destroy();
+				if(skipCb != null) skipCb();
 				trace('Skipped video');
 				return;
 			}

@@ -33,7 +33,9 @@
 	<define name="SHOW_LOADING_SCREEN" />
 	<define name="PSYCH_WATERMARKS"/> <!-- DELETE THIS TO REMOVE THE PSYCH LOGO FROM LOADING SCREEN -->
 
-	<define name="VIDEOS_ALLOWED" if="desktop || mobile" unless="32bits"/>
+	<section if="cpp">
+		<define name="VIDEOS_ALLOWED" if="desktop || mobile" unless="32bits"/>
+	</section>
 	<section if="officialBuild">
 		<define name="TITLE_SCREEN_EASTER_EGG"/>
 		<define name="BASE_GAME_FILES" />
@@ -72,7 +74,7 @@
 	<assets path="assets/shared"        exclude="*.mp3" unless="web"/>
 	<assets path="assets/embed"         exclude="*.ogg" if="web" embed="true"/>
 	<assets path="assets/embed"         exclude="*.mp3" unless="web" embed="true"/>
-	<assets path="assets/videos"        if="VIDEOS_ALLOWED"/>
+	<assets path="assets/videos"        if="VIDEOS_ALLOWED" embed="false"/>
 	<assets path="assets/songs"         exclude="*.ogg" if="web"/>
 	<assets path="assets/songs"         exclude="*.mp3" unless="web"/>
 	<assets path="assets/week_assets"   rename="assets" exclude="*.ogg" if="web"/>
@@ -165,11 +167,12 @@
 	<haxedef name="NAPE_RELEASE_BUILD" unless="debug" />
 	
 	<!--Used for crash handler-->
+	<haxedef name="openfl-enable-handle-error" />
 	<section if="cpp">
 		<haxedef name="HXCPP_CHECK_POINTER" />
 		<haxedef name="HXCPP_STACK_LINE" />
 		<haxedef name="HXCPP_STACK_TRACE" />
-		<haxedef name="HXCPP_CATCH_SEGV" />
+		<haxedef name="HXCPP_CATCH_SEGV" unless="android" />
 	</section>
 	
 	<!--Disable deprecated warnings-->
@@ -190,8 +193,10 @@
 	<haxedef name="SHARE_MOBILE_FILES" if="ios" />
 
 	<!--Macro fixes-->
+	<haxeflag name="-dce" value="no" />
 	<haxeflag name="--macro" value="allowPackage('flash')" />
 	<haxeflag name="--macro" value="include('my.pack')" />
+	<haxeflag name="--macro" value="include('hxvlc')" if="VIDEOS_ALLOWED" />
 
 	<haxedef name="hscriptPos" if="HSCRIPT_ALLOWED" />
 
