@@ -59,6 +59,8 @@ class MusicBeatState extends FlxState
 				mobileControls = MobileData.getTouchPadCustom(new TouchPad('RIGHT_FULL', 'NONE', extraMode));
 			case 3: // HITBOX
 				mobileControls = new Hitbox(extraMode);
+			case 4: // V-SLICE
+				mobileControls = new Hitbox(extraMode, true);
 		}
 
 		mobileControls.instance = MobileData.setButtonsColors(mobileControls.instance);

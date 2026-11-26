@@ -47,6 +47,8 @@ class MobileControls extends FlxTypedSpriteGroup<MobileInputManager>
 				initControler(2, extra);
 			case 3: // HITBOX
 				initControler(3, extra);
+			case 4: // V-SLICE
+				initControler(4, extra);
 		}
 		alpha = ClientPrefs.data.controlsAlpha;
 	}
@@ -72,6 +74,10 @@ class MobileControls extends FlxTypedSpriteGroup<MobileInputManager>
 				add(touchPad);
 			case 3:
 				hitbox = new Hitbox(extraAction);
+				hitbox = MobileData.setButtonsColors(hitbox);
+				add(hitbox);
+			case 4:
+				hitbox = new Hitbox(extraAction, true);
 				hitbox = MobileData.setButtonsColors(hitbox);
 				add(hitbox);
 		}

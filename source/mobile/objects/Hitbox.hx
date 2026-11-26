@@ -27,6 +27,8 @@ import openfl.display.Shape;
 import flixel.graphics.FlxGraphic;
 import flixel.util.FlxSignal.FlxTypedSignal;
 import openfl.geom.Matrix;
+import states.PlayState;
+import objects.Note;
 
 /**
  * A zone with 4 hint's (A hitbox).
@@ -49,15 +51,17 @@ class Hitbox extends MobileInputManager implements IMobileControls
 	public var instance:MobileInputManager;
 	public var onButtonDown:FlxTypedSignal<TouchButton->Void> = new FlxTypedSignal<TouchButton->Void>();
 	public var onButtonUp:FlxTypedSignal<TouchButton->Void> = new FlxTypedSignal<TouchButton->Void>();
+	public var isVSlice:Bool = false;
 
 	var storedButtonsIDs:Map<String, Array<MobileInputID>> = new Map<String, Array<MobileInputID>>();
 
 	/**
 	 * Create the zone.
 	 */
-	public function new(?extraMode:ExtraActions = NONE)
+	public function new(?extraMode:ExtraActions = NONE, ?vsliceMode:Bool = false)
 	{
 		super();
+		this.isVSlice = vsliceMode;
 
 		for (button in Reflect.fields(this))
 		{
@@ -66,29 +70,53 @@ class Hitbox extends MobileInputManager implements IMobileControls
 				storedButtonsIDs.set(button, Reflect.getProperty(field, 'IDs'));
 		}
 
-		switch (extraMode)
+		if (isVSlice)
 		{
-			case NONE:
-				var isTop:Bool = !ClientPrefs.data.hitboxPos;
-				add(buttonLeft = createHint(0, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFFC24B99, isTop));
-				add(buttonDown = createHint(FlxG.width / 4, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFF00FFFF, isTop));
-				add(buttonUp = createHint(FlxG.width / 2, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFF12FA05, isTop));
-				add(buttonRight = createHint((FlxG.width / 2) + (FlxG.width / 4), 0, Std.int(FlxG.width / 4), FlxG.height, 0xFFF9393F, isTop));
-			case SINGLE:
-				add(buttonLeft = createHint(0, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFFC24B99, false));
-				add(buttonDown = createHint(FlxG.width / 4, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF00FFFF, false));
-				add(buttonUp = createHint(FlxG.width / 2, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF12FA05, false));
-				add(buttonRight = createHint((FlxG.width / 2) + (FlxG.width / 4), offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3,
-					0xFFF9393F, false));
-				add(buttonExtra = createHint(0, offsetFir, FlxG.width, Std.int(FlxG.height / 4), 0xFF0066FF, true));
-			case DOUBLE:
-				add(buttonLeft = createHint(0, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFFC24B99, false));
-				add(buttonDown = createHint(FlxG.width / 4, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF00FFFF, false));
-				add(buttonUp = createHint(FlxG.width / 2, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF12FA05, false));
-				add(buttonRight = createHint((FlxG.width / 2) + (FlxG.width / 4), offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3,
-					0xFFF9393F, false));
-				add(buttonExtra2 = createHint(Std.int(FlxG.width / 2), offsetFir, Std.int(FlxG.width / 2), Std.int(FlxG.height / 4), 0xA6FF00, true));
-				add(buttonExtra = createHint(0, offsetFir, Std.int(FlxG.width / 2), Std.int(FlxG.height / 4), 0xFF0066FF, true));
+			var baseX:Float = (FlxG.width / 2) + PlayState.STRUM_X_MIDDLESCROLL + 50;
+			var baseY:Float = FlxG.height - 150;
+			var stepX:Float = Note.swagWidth;
+
+			add(buttonLeft = createVSliceHint(baseX, baseY, 0, 0xFFC24B99));
+			add(buttonDown = createVSliceHint(baseX + stepX, baseY, 1, 0xFF00FFFF));
+			add(buttonUp = createVSliceHint(baseX + stepX * 2, baseY, 2, 0xFF12FA05));
+			add(buttonRight = createVSliceHint(baseX + stepX * 3, baseY, 3, 0xFFF9393F));
+
+			switch (extraMode)
+			{
+				case SINGLE:
+					add(buttonExtra = createHint(0, offsetFir, FlxG.width, Std.int(FlxG.height / 4), 0xFF0066FF, true));
+				case DOUBLE:
+					add(buttonExtra2 = createHint(Std.int(FlxG.width / 2), offsetFir, Std.int(FlxG.width / 2), Std.int(FlxG.height / 4), 0xA6FF00, true));
+					add(buttonExtra = createHint(0, offsetFir, Std.int(FlxG.width / 2), Std.int(FlxG.height / 4), 0xFF0066FF, true));
+				case NONE:
+			}
+		}
+		else
+		{
+			switch (extraMode)
+			{
+				case NONE:
+					var isTop:Bool = !ClientPrefs.data.hitboxPos;
+					add(buttonLeft = createHint(0, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFFC24B99, isTop));
+					add(buttonDown = createHint(FlxG.width / 4, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFF00FFFF, isTop));
+					add(buttonUp = createHint(FlxG.width / 2, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFF12FA05, isTop));
+					add(buttonRight = createHint((FlxG.width / 2) + (FlxG.width / 4), 0, Std.int(FlxG.width / 4), FlxG.height, 0xFFF9393F, isTop));
+				case SINGLE:
+					add(buttonLeft = createHint(0, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFFC24B99, false));
+					add(buttonDown = createHint(FlxG.width / 4, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF00FFFF, false));
+					add(buttonUp = createHint(FlxG.width / 2, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF12FA05, false));
+					add(buttonRight = createHint((FlxG.width / 2) + (FlxG.width / 4), offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3,
+						0xFFF9393F, false));
+					add(buttonExtra = createHint(0, offsetFir, FlxG.width, Std.int(FlxG.height / 4), 0xFF0066FF, true));
+				case DOUBLE:
+					add(buttonLeft = createHint(0, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFFC24B99, false));
+					add(buttonDown = createHint(FlxG.width / 4, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF00FFFF, false));
+					add(buttonUp = createHint(FlxG.width / 2, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF12FA05, false));
+					add(buttonRight = createHint((FlxG.width / 2) + (FlxG.width / 4), offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3,
+						0xFFF9393F, false));
+					add(buttonExtra2 = createHint(Std.int(FlxG.width / 2), offsetFir, Std.int(FlxG.width / 2), Std.int(FlxG.height / 4), 0xA6FF00, true));
+					add(buttonExtra = createHint(0, offsetFir, Std.int(FlxG.width / 2), Std.int(FlxG.height / 4), 0xFF0066FF, true));
+			}
 		}
 
 		for (button in Reflect.fields(this))
@@ -236,7 +264,7 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		else if (ClientPrefs.data.hitboxType == "Hitbox Line")
 		{
 			var lineHeight:Int = 6;
-			var glowHeight:Int = Std.int(Height * 0.35);
+			var glowHeight:Int = Std.int(Height * 0.175);
 
 			var matrix:Matrix = new Matrix();
 			if (isTop)
@@ -284,5 +312,97 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		bitmap.draw(shape);
 
 		return FlxG.bitmap.add(bitmap);
+	}
+
+	private function createVSliceHint(X:Float, Y:Float, noteData:Int, Color:Int = 0xFFFFFF):TouchButton
+	{
+		var inPlayState:Bool = (PlayState.instance != null && FlxG.state == PlayState.instance);
+		var hint = new TouchButton(X, Y);
+		hint.statusAlphas = [];
+		hint.statusIndicatorType = NONE;
+
+		hint.label = new FlxSprite();
+		hint.label.makeGraphic(1, 1, FlxColor.TRANSPARENT);
+		hint.label.alpha = 0.00001;
+		hint.labelStatusDiff = 0.00001;
+		hint.canChangeLabelAlpha = false;
+
+		if (!inPlayState)
+		{
+			hint.frames = Paths.getSparrowAtlas('NOTE_assets');
+			switch (noteData % 4)
+			{
+				case 0:
+					hint.animation.addByPrefix('static', 'arrowLEFT');
+					hint.animation.addByPrefix('pressed', 'left press', 24, false);
+				case 1:
+					hint.animation.addByPrefix('static', 'arrowDOWN');
+					hint.animation.addByPrefix('pressed', 'down press', 24, false);
+				case 2:
+					hint.animation.addByPrefix('static', 'arrowUP');
+					hint.animation.addByPrefix('pressed', 'up press', 24, false);
+				case 3:
+					hint.animation.addByPrefix('static', 'arrowRIGHT');
+					hint.animation.addByPrefix('pressed', 'right press', 24, false);
+			}
+			hint.setGraphicSize(Std.int(hint.width * 0.7));
+			hint.updateHitbox();
+			hint.animation.play('static', true);
+			hint.alpha = ClientPrefs.data.controlsAlpha;
+
+			hint.onDown.callback = function()
+			{
+				onButtonDown.dispatch(hint);
+				hint.animation.play('pressed', true);
+				hint.centerOffsets();
+				hint.centerOrigin();
+			};
+			hint.onOut.callback = hint.onUp.callback = function()
+			{
+				onButtonUp.dispatch(hint);
+				hint.animation.play('static', true);
+				hint.centerOffsets();
+				hint.centerOrigin();
+			};
+		}
+		else
+		{
+			var hitW:Int = Std.int(Note.swagWidth * 1.15);
+			var hitH:Int = 360;
+			hint.makeGraphic(hitW, hitH, FlxColor.TRANSPARENT);
+			hint.alpha = 0.00001;
+			hint.onDown.callback = () -> onButtonDown.dispatch(hint);
+			hint.onOut.callback = hint.onUp.callback = () -> onButtonUp.dispatch(hint);
+		}
+
+		hint.immovable = hint.multiTouch = true;
+		hint.solid = hint.moves = false;
+		hint.antialiasing = ClientPrefs.data.antialiasing;
+		hint.color = Color;
+		#if FLX_DEBUG
+		hint.ignoreDrawDebug = true;
+		#end
+		return hint;
+	}
+
+	override public function update(elapsed:Float):Void
+	{
+		super.update(elapsed);
+
+		if (isVSlice && PlayState.instance != null && FlxG.state == PlayState.instance && PlayState.instance.playerStrums != null
+			&& PlayState.instance.playerStrums.length >= 4)
+		{
+			var btns:Array<TouchButton> = [buttonLeft, buttonDown, buttonUp, buttonRight];
+			for (i in 0...4)
+			{
+				var strum = PlayState.instance.playerStrums.members[i];
+				var btn = btns[i];
+				if (strum != null && btn != null)
+				{
+					btn.x = strum.x + (strum.width - btn.width) * 0.5;
+					btn.y = strum.y - (btn.height - strum.height) * 0.5;
+				}
+			}
+		}
 	}
 }

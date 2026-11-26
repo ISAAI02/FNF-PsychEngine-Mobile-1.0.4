@@ -74,8 +74,11 @@ import crowplexus.hscript.Printer;
 **/
 class PlayState extends MusicBeatState
 {
-	public static var STRUM_X = 42;
-	public static var STRUM_X_MIDDLESCROLL = -278;
+	public static var STRUM_X = 48;
+	public static var STRUM_X_MIDDLESCROLL = -272;
+
+	var _vsliceSavedDownScroll:Null<Bool> = null;
+	var _vsliceSavedMiddleScroll:Null<Bool> = null;
 
 	public static var ratingStuff:Array<Dynamic> = [
 		['You Suck!', 0.2], //From 0% to 19%
@@ -297,6 +300,14 @@ class PlayState extends MusicBeatState
 		PauseSubState.songName = null; //Reset to default
 		playbackRate = ClientPrefs.getGameplaySetting('songspeed');
 
+		if (MobileData.mode == 4)
+		{
+			_vsliceSavedDownScroll = ClientPrefs.data.downScroll;
+			_vsliceSavedMiddleScroll = ClientPrefs.data.middleScroll;
+			ClientPrefs.data.downScroll = true;
+			ClientPrefs.data.middleScroll = true;
+		}
+
 		keysArray = [
 			'note_left',
 			'note_down',
@@ -496,9 +507,10 @@ class PlayState extends MusicBeatState
 
 		Conductor.songPosition = -Conductor.crochet * 5 + Conductor.offset;
 		var showTime:Bool = (ClientPrefs.data.timeBarType != 'Disabled');
-		timeTxt = new FlxText(STRUM_X + (FlxG.width / 2) - 248, 19, 400, "", 32);
+		timeTxt = new FlxText(0, 19, 400, "", 32);
 		timeTxt.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		timeTxt.scrollFactor.set();
+		timeTxt.screenCenter(X);
 		timeTxt.alpha = 0;
 		timeTxt.borderSize = 2;
 		timeTxt.visible = updateTime = showTime;
@@ -1467,7 +1479,7 @@ class PlayState extends MusicBeatState
 						{
 							sustainNote.x += 310;
 							if(noteColumn > 1) //Up and Right
-								sustainNote.x += FlxG.width / 2 + 25;
+								sustainNote.x += FlxG.width / 2 + 20;
 						}
 					}
 				}
@@ -1481,7 +1493,7 @@ class PlayState extends MusicBeatState
 					swagNote.x += 310;
 					if(noteColumn > 1) //Up and Right
 					{
-						swagNote.x += FlxG.width / 2 + 25;
+						swagNote.x += FlxG.width / 2 + 20;
 					}
 				}
 				if(!noteTypes.contains(swagNote.noteType))
@@ -1597,7 +1609,7 @@ class PlayState extends MusicBeatState
 				{
 					babyArrow.x += 310;
 					if(i > 1) { //Up and Right
-						babyArrow.x += FlxG.width / 2 + 25;
+						babyArrow.x += FlxG.width / 2 + 20;
 					}
 				}
 				opponentStrums.add(babyArrow);
@@ -3228,6 +3240,17 @@ class PlayState extends MusicBeatState
 	}
 
 	override function destroy() {
+		if (_vsliceSavedDownScroll != null)
+		{
+			ClientPrefs.data.downScroll = _vsliceSavedDownScroll;
+			_vsliceSavedDownScroll = null;
+		}
+		if (_vsliceSavedMiddleScroll != null)
+		{
+			ClientPrefs.data.middleScroll = _vsliceSavedMiddleScroll;
+			_vsliceSavedMiddleScroll = null;
+		}
+
 		if (psychlua.CustomSubstate.instance != null)
 		{
 			closeSubState();
