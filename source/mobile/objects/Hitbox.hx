@@ -36,8 +36,8 @@ import openfl.geom.Matrix;
  */
 class Hitbox extends MobileInputManager implements IMobileControls
 {
-	final offsetFir:Int = (ClientPrefs.data.hitboxPos ? Std.int(FlxG.height / 4) * 3 : 0);
-	final offsetSec:Int = (ClientPrefs.data.hitboxPos ? 0 : Std.int(FlxG.height / 4));
+	final offsetFir:Int = 0;
+	final offsetSec:Int = Std.int(FlxG.height / 4);
 
 	public var buttonLeft:TouchButton = new TouchButton(0, 0, [MobileInputID.HITBOX_LEFT, MobileInputID.NOTE_LEFT]);
 	public var buttonDown:TouchButton = new TouchButton(0, 0, [MobileInputID.HITBOX_DOWN, MobileInputID.NOTE_DOWN]);
@@ -69,25 +69,26 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		switch (extraMode)
 		{
 			case NONE:
-				add(buttonLeft = createHint(0, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFFC24B99));
-				add(buttonDown = createHint(FlxG.width / 4, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFF00FFFF));
-				add(buttonUp = createHint(FlxG.width / 2, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFF12FA05));
-				add(buttonRight = createHint((FlxG.width / 2) + (FlxG.width / 4), 0, Std.int(FlxG.width / 4), FlxG.height, 0xFFF9393F));
+				var isTop:Bool = !ClientPrefs.data.hitboxPos;
+				add(buttonLeft = createHint(0, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFFC24B99, isTop));
+				add(buttonDown = createHint(FlxG.width / 4, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFF00FFFF, isTop));
+				add(buttonUp = createHint(FlxG.width / 2, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFF12FA05, isTop));
+				add(buttonRight = createHint((FlxG.width / 2) + (FlxG.width / 4), 0, Std.int(FlxG.width / 4), FlxG.height, 0xFFF9393F, isTop));
 			case SINGLE:
-				add(buttonLeft = createHint(0, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFFC24B99));
-				add(buttonDown = createHint(FlxG.width / 4, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF00FFFF));
-				add(buttonUp = createHint(FlxG.width / 2, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF12FA05));
+				add(buttonLeft = createHint(0, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFFC24B99, false));
+				add(buttonDown = createHint(FlxG.width / 4, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF00FFFF, false));
+				add(buttonUp = createHint(FlxG.width / 2, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF12FA05, false));
 				add(buttonRight = createHint((FlxG.width / 2) + (FlxG.width / 4), offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3,
-					0xFFF9393F));
-				add(buttonExtra = createHint(0, offsetFir, FlxG.width, Std.int(FlxG.height / 4), 0xFF0066FF));
+					0xFFF9393F, false));
+				add(buttonExtra = createHint(0, offsetFir, FlxG.width, Std.int(FlxG.height / 4), 0xFF0066FF, true));
 			case DOUBLE:
-				add(buttonLeft = createHint(0, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFFC24B99));
-				add(buttonDown = createHint(FlxG.width / 4, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF00FFFF));
-				add(buttonUp = createHint(FlxG.width / 2, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF12FA05));
+				add(buttonLeft = createHint(0, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFFC24B99, false));
+				add(buttonDown = createHint(FlxG.width / 4, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF00FFFF, false));
+				add(buttonUp = createHint(FlxG.width / 2, offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3, 0xFF12FA05, false));
 				add(buttonRight = createHint((FlxG.width / 2) + (FlxG.width / 4), offsetSec, Std.int(FlxG.width / 4), Std.int(FlxG.height / 4) * 3,
-					0xFFF9393F));
-				add(buttonExtra2 = createHint(Std.int(FlxG.width / 2), offsetFir, Std.int(FlxG.width / 2), Std.int(FlxG.height / 4), 0xA6FF00));
-				add(buttonExtra = createHint(0, offsetFir, Std.int(FlxG.width / 2), Std.int(FlxG.height / 4), 0xFF0066FF));
+					0xFFF9393F, false));
+				add(buttonExtra2 = createHint(Std.int(FlxG.width / 2), offsetFir, Std.int(FlxG.width / 2), Std.int(FlxG.height / 4), 0xA6FF00, true));
+				add(buttonExtra = createHint(0, offsetFir, Std.int(FlxG.width / 2), Std.int(FlxG.height / 4), 0xFF0066FF, true));
 		}
 
 		for (button in Reflect.fields(this))
@@ -120,17 +121,19 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		}
 	}
 
-	private function createHint(X:Float, Y:Float, Width:Int, Height:Int, Color:Int = 0xFFFFFF):TouchButton
+	private function createHint(X:Float, Y:Float, Width:Int, Height:Int, Color:Int = 0xFFFFFF, ?isTop:Bool = false):TouchButton
 	{
 		var hint = new TouchButton(X, Y);
 		hint.statusAlphas = [];
 		hint.statusIndicatorType = NONE;
-		hint.loadGraphic(createHintGraphic(Width, Height));
+		hint.loadGraphic(createHintGraphic(Width, Height, false, isTop));
+
+		var isLineType:Bool = (ClientPrefs.data.hitboxType == "Hitbox Line");
 
 		hint.label = new FlxSprite();
-		hint.labelStatusDiff = (ClientPrefs.data.hitboxType != "Hidden") ? ClientPrefs.data.controlsAlpha : 0.00001;
-		hint.label.loadGraphic(createHintGraphic(Width, Math.floor(Height * 0.035), true));
-		if (ClientPrefs.data.hitboxPos)
+		hint.labelStatusDiff = (ClientPrefs.data.hitboxType != "Hidden" && !isLineType) ? ClientPrefs.data.controlsAlpha : 0.00001;
+		hint.label.loadGraphic(createHintGraphic(Width, Math.floor(Height * 0.035), true, isTop));
+		if (!isTop)
 			hint.label.offset.y -= (hint.height - hint.label.height) / 2;
 		else
 			hint.label.offset.y += (hint.height - hint.label.height) / 2;
@@ -155,10 +158,13 @@ class Hitbox extends MobileInputManager implements IMobileControls
 					onComplete: (twn:FlxTween) -> hintTween = null
 				});
 
-				hintLaneTween = FlxTween.tween(hint.label, {alpha: 0.00001}, ClientPrefs.data.controlsAlpha / 10, {
-					ease: FlxEase.circInOut,
-					onComplete: (twn:FlxTween) -> hintTween = null
-				});
+				if (!isLineType)
+				{
+					hintLaneTween = FlxTween.tween(hint.label, {alpha: 0.00001}, ClientPrefs.data.controlsAlpha / 10, {
+						ease: FlxEase.circInOut,
+						onComplete: (twn:FlxTween) -> hintLaneTween = null
+					});
+				}
 			}
 
 			hint.onOut.callback = hint.onUp.callback = function()
@@ -176,10 +182,13 @@ class Hitbox extends MobileInputManager implements IMobileControls
 					onComplete: (twn:FlxTween) -> hintTween = null
 				});
 
-				hintLaneTween = FlxTween.tween(hint.label, {alpha: ClientPrefs.data.controlsAlpha}, ClientPrefs.data.controlsAlpha / 100, {
-					ease: FlxEase.circInOut,
-					onComplete: (twn:FlxTween) -> hintTween = null
-				});
+				if (!isLineType)
+				{
+					hintLaneTween = FlxTween.tween(hint.label, {alpha: ClientPrefs.data.controlsAlpha}, ClientPrefs.data.controlsAlpha / 100, {
+						ease: FlxEase.circInOut,
+						onComplete: (twn:FlxTween) -> hintLaneTween = null
+					});
+				}
 			}
 		}
 		else
@@ -191,7 +200,7 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		hint.immovable = hint.multiTouch = true;
 		hint.solid = hint.moves = false;
 		hint.alpha = 0.00001;
-		hint.label.alpha = (ClientPrefs.data.hitboxType != "Hidden") ? ClientPrefs.data.controlsAlpha : 0.00001;
+		hint.label.alpha = (ClientPrefs.data.hitboxType != "Hidden" && !isLineType) ? ClientPrefs.data.controlsAlpha : 0.00001;
 		hint.canChangeLabelAlpha = false;
 		hint.label.antialiasing = hint.antialiasing = ClientPrefs.data.antialiasing;
 		hint.color = Color;
@@ -201,10 +210,9 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		return hint;
 	}
 
-	function createHintGraphic(Width:Int, Height:Int, ?isLane:Bool = false):FlxGraphic
+	function createHintGraphic(Width:Int, Height:Int, ?isLane:Bool = false, ?isTop:Bool = false):FlxGraphic
 	{
 		var shape:Shape = new Shape();
-		shape.graphics.beginFill(0xFFFFFF);
 
 		if (ClientPrefs.data.hitboxType == "No Gradient")
 		{
@@ -220,12 +228,45 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		}
 		else if (ClientPrefs.data.hitboxType == "No Gradient (Old)")
 		{
+			shape.graphics.beginFill(0xFFFFFF);
 			shape.graphics.lineStyle(10, 0xFFFFFF, 1);
 			shape.graphics.drawRect(0, 0, Width, Height);
 			shape.graphics.endFill();
 		}
+		else if (ClientPrefs.data.hitboxType == "Hitbox Line")
+		{
+			var lineHeight:Int = 6;
+			var glowHeight:Int = Std.int(Height * 0.35);
+
+			var matrix:Matrix = new Matrix();
+			if (isTop)
+			{
+				matrix.createGradientBox(Width, glowHeight, Math.PI / 2, 0, 0);
+
+				shape.graphics.beginGradientFill(LINEAR, [0xFFFFFF, 0xFFFFFF], [1, 0], [0, 255], matrix);
+				shape.graphics.drawRect(0, 0, Width, glowHeight);
+				shape.graphics.endFill();
+
+				shape.graphics.beginFill(0xFFFFFF, 1);
+				shape.graphics.drawRect(0, 0, Width, lineHeight);
+				shape.graphics.endFill();
+			}
+			else
+			{
+				matrix.createGradientBox(Width, glowHeight, Math.PI / 2, 0, Height - glowHeight);
+
+				shape.graphics.beginGradientFill(LINEAR, [0xFFFFFF, 0xFFFFFF], [0, 1], [0, 255], matrix);
+				shape.graphics.drawRect(0, Height - glowHeight, Width, glowHeight);
+				shape.graphics.endFill();
+
+				shape.graphics.beginFill(0xFFFFFF, 1);
+				shape.graphics.drawRect(0, Height - lineHeight, Width, lineHeight);
+				shape.graphics.endFill();
+			}
+		}
 		else // if (ClientPrefs.data.hitboxType == 'Gradient')
 		{
+			shape.graphics.beginFill(0xFFFFFF);
 			shape.graphics.lineStyle(3, 0xFFFFFF, 1);
 			shape.graphics.drawRect(0, 0, Width, Height);
 			shape.graphics.lineStyle(0, 0, 0);

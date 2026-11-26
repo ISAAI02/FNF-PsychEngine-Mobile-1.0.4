@@ -111,4 +111,18 @@ class PsychCamera extends FlxCamera
 	{
 		return followLerp = value;
 	}
+
+	override function updateScrollRect()
+	{
+		super.updateScrollRect();
+		if (_scrollRect != null && _scrollRect.scrollRect != null)
+		{
+			var rect = _scrollRect.scrollRect;
+			rect.x += 1;
+			rect.y += 1;
+			if (rect.width > 2) rect.width -= 2;
+			if (rect.height > 2) rect.height -= 2;
+			_scrollRect.scrollRect = rect;
+		}
+	}
 }

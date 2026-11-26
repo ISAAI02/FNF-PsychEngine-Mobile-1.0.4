@@ -31,6 +31,7 @@ import flixel.system.scaleModes.BaseScaleMode;
 class MobileScaleMode extends BaseScaleMode
 {
 	public static var allowWideScreen(default, set):Bool = true;
+	private static var borderMask:openfl.display.Shape;
 
 	override function updateGameSize(Width:Int, Height:Int):Void
 	{
@@ -74,6 +75,47 @@ class MobileScaleMode extends BaseScaleMode
 			FlxG.game.x = Math.floor(FlxG.game.x);
 			FlxG.game.y = Math.floor(FlxG.game.y);
 		}
+		updateBorderMask();
+	}
+
+	private function updateBorderMask():Void
+	{
+		if (FlxG.stage == null || FlxG.game == null)
+			return;
+
+		if (borderMask == null)
+			borderMask = new openfl.display.Shape();
+
+		if (borderMask.parent != FlxG.stage)
+		{
+			var gameIdx:Int = FlxG.stage.getChildIndex(FlxG.game);
+			if (gameIdx >= 0)
+				FlxG.stage.addChildAt(borderMask, gameIdx + 1);
+			else
+				FlxG.stage.addChild(borderMask);
+		}
+
+		borderMask.graphics.clear();
+		if (ClientPrefs.data.wideScreen && allowWideScreen)
+			return;
+
+		var stageW:Float = FlxG.stage.stageWidth;
+		var stageH:Float = FlxG.stage.stageHeight;
+		var gx:Float = FlxG.game.x;
+		var gy:Float = FlxG.game.y;
+		var gw:Float = gameSize.x;
+		var gh:Float = gameSize.y;
+
+		borderMask.graphics.beginFill(0x000000, 1.0);
+		if (gx > 0)
+			borderMask.graphics.drawRect(0, 0, gx + 2, stageH);
+		if (gx + gw < stageW)
+			borderMask.graphics.drawRect(gx + gw - 2, 0, (stageW - (gx + gw)) + 4, stageH);
+		if (gy > 0)
+			borderMask.graphics.drawRect(0, 0, stageW, gy + 2);
+		if (gy + gh < stageH)
+			borderMask.graphics.drawRect(0, gy + gh - 2, stageW, (stageH - (gy + gh)) + 4);
+		borderMask.graphics.endFill();
 	}
 
 	@:noCompletion

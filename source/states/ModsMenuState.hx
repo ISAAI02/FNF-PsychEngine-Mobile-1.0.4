@@ -63,6 +63,7 @@ class ModsMenuState extends MusicBeatState
 		Paths.clearUnusedMemory();
 		persistentUpdate = false;
 
+		Mods.updatedOnState = false;
 		modsList = Mods.parseList();
 		Mods.loadTopMod();
 
@@ -102,11 +103,7 @@ class ModsMenuState extends MusicBeatState
 		var buttonX = bgList.x;
 		var buttonWidth = Std.int(bgList.width);
 		var buttonHeight = 80;
-		var daY = 0;
-		if (controls.mobileC)
-			daY = 70;
-		else
-			daY = 20;
+		var daY = 20;
 
 		buttonReload = new MenuButton(buttonX, bgList.y + bgList.height + daY, buttonWidth, buttonHeight, Language.getPhrase('reload_button', 'RELOAD'), reload);
 		add(buttonReload);
@@ -141,8 +138,7 @@ class ModsMenuState extends MusicBeatState
 		});
 		buttonEnableAll.bg.color = FlxColor.GREEN;
 		buttonEnableAll.focusChangeCallback = function(focus:Bool) if(!focus) buttonEnableAll.bg.color = FlxColor.GREEN;
-		if(!controls.mobileC)
-			add(buttonEnableAll);
+		add(buttonEnableAll);
 
 		buttonDisableAll = new MenuButton(buttonX, myY, buttonWidth, buttonHeight, Language.getPhrase('disable_all_button', 'DISABLE ALL'), function() {
 			buttonDisableAll.ignoreCheck = false;
@@ -162,8 +158,7 @@ class ModsMenuState extends MusicBeatState
 		});
 		buttonDisableAll.bg.color = 0xFFFF6666;
 		buttonDisableAll.focusChangeCallback = function(focus:Bool) if(!focus) buttonDisableAll.bg.color = 0xFFFF6666;
-		if(!controls.mobileC)
-			add(buttonDisableAll);
+		add(buttonDisableAll);
 		checkToggleButtons();
 
 		if(modsList.all.length < 1)
@@ -317,7 +312,7 @@ class ModsMenuState extends MusicBeatState
 		add(bottomText);
 
 		addTouchPad('UP_DOWN', 'B');
-		touchPad.y -= 215; // so that you can press the buttons.
+		touchPad.y -= 225; // so that you can press the buttons.
 		if (controls.mobileC)
 			touchPad.alpha = 0.3;
 		super.create();
@@ -639,40 +634,7 @@ class ModsMenuState extends MusicBeatState
 			button.ignoreCheck = button.onFocus = false;
 		}
 
-		var lastSelected = curSelectedMod;
-		curSelectedMod += add;
-
-		var limited:Bool = false;
-		if(curSelectedMod < 0)
-		{
-			curSelectedMod = 0;
-			limited = true;
-		}
-		else if(curSelectedMod > max)
-		{
-			curSelectedMod = max;
-			limited = true;
-		}
-		
-		if(!controls.mobileC && !isMouseWheel && limited && Math.abs(add) == 1)
-		{
-			if(add < 0) // pressed up on first mod
-			{
-				curSelectedMod = lastSelected;
-				hoveringOnMods = false;
-				curSelectedButton = -1;
-				changeSelectedButton();
-				return;
-			}
-			else // pressed down on last mod
-			{
-				curSelectedMod = lastSelected;
-				hoveringOnMods = false;
-				curSelectedButton = -2;
-				changeSelectedButton();
-				return;
-			}
-		}
+		curSelectedMod = FlxMath.wrap(curSelectedMod + add, 0, max);
 		
 		holdingMod = false;
 		holdingElapsed = 0;
@@ -703,6 +665,7 @@ class ModsMenuState extends MusicBeatState
 				centerMod = curSelectedMod - 2;
 			else centerMod = curSelectedMod + 2;
 		}
+		centerMod = Std.int(Math.max(2, Math.min(Math.max(2, modsList.all.length - 3), centerMod)));
 		updateItemPositions();
 
 		icon.loadGraphic(curMod.icon.graphic, true, 150, 150);
@@ -913,8 +876,10 @@ class ModItem extends FlxSpriteGroup
 		this.name = folder;
 		if(pack != null)
 		{
-			if(pack.name != null) this.name = pack.name;
-			if(pack.description != null) this.desc = pack.description;
+			if(pack.name != null && Std.string(pack.name).trim().length > 0 && pack.name != 'Name')
+				this.name = pack.name;
+			if(pack.description != null && Std.string(pack.description).trim().length > 0)
+				this.desc = pack.description;
 			if(pack.iconFramerate != null) this.iconFps = pack.iconFramerate;
 			if(pack.color != null)
 			{
