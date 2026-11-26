@@ -11,7 +11,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       name: Android
-      os: macos-15
+      os: ubuntu-latest
       buildArgs: "android -final -D officialBuild"
       setupCommand: sh ./setup/unix.sh
       artifactName: FNF-1.0.4-Android-APK
