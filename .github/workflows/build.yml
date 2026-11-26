@@ -57,7 +57,7 @@ jobs:
       - name: Silence hxcpp zlib C23 prototype warnings
         if: inputs.name != 'Windows'
         run: |
-          for f in ~/haxelib/hxcpp/git/toolchain/android-toolchain-clang.xml ~/haxelib/hxcpp/git/toolchain/mac-toolchain.xml; do
+          for f in ~/haxelib/hxcpp/git/toolchain/android-toolchain-clang.xml ~/haxelib/hxcpp/git/toolchain/mac-toolchain.xml ~/haxelib/hxcpp/git/toolchain/linux-toolchain.xml; do
             if [ -f "$f" ]; then
               sed -i.bak 's/<flag value="-Wno-parentheses" \/>/<flag value="-Wno-parentheses" \/><flag value="-Wno-deprecated-non-prototype" \/>/' "$f" || true
             fi

@@ -169,7 +169,6 @@
 	<!--Used for crash handler-->
 	<haxedef name="openfl-enable-handle-error" />
 	<section if="cpp">
-		<compilerflag value="-Wno-deprecated-non-prototype" unless="windows" />
 		<haxedef name="HXCPP_CHECK_POINTER" />
 		<haxedef name="HXCPP_STACK_LINE" />
 		<haxedef name="HXCPP_STACK_TRACE" />
