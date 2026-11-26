@@ -18,6 +18,9 @@ import flash.media.Sound;
 
 import haxe.Json;
 
+#if (sys && target.threaded)
+import sys.thread.Mutex;
+#end
 
 #if MODS_ALLOWED
 import backend.Mods;
@@ -329,7 +332,8 @@ class Paths
 			#end
 		}
 		#end
-		return (OpenFlAssets.exists(getPath(key, type, parentFolder, false)));
+		var defaultPath:String = getPath(key, type, parentFolder, false);
+		return (#if sys FileSystem.exists(defaultPath) || #end OpenFlAssets.exists(defaultPath));
 	}
 
 	static public function getAtlas(key:String, ?parentFolder:String = null, ?allowGPU:Bool = true):FlxAtlasFrames
@@ -521,6 +525,19 @@ class Paths
 		return (#if android StorageUtil.getExternalStorageDirectory() + #else Sys.getCwd() + #end 'mods/' + key);
 	}
 
+	#if (sys && target.threaded)
+	private static var _cacheMutex:Mutex = new Mutex();
+	#end
+	private static var _dirNodeCache:Map<String, Map<String, String>> = new Map();
+	private static var _assetsDirMap:Map<String, Array<String>> = null;
+
+	public static function clearDirCache():Void
+	{
+		#if (sys && target.threaded) _cacheMutex.acquire(); #end
+		_dirNodeCache.clear();
+		#if (sys && target.threaded) _cacheMutex.release(); #end
+	}
+
 	#if (linux || android)
 	static function findFile(key:String):String {
 		var targetParts:Array<String> = key.replace('\\', '/').split('/').filter(p -> p != '');
@@ -556,18 +573,24 @@ class Paths
 	}
 
 	static function findNode(dir:String, key:String):String {
-		try {
-			var allFiles:Array<String> = Paths.readDirectory(dir);
-			var fileMap:Map<String, String> = new Map();
-
-			for (file in allFiles) {
-				fileMap.set(file.toLowerCase(), file);
-			}
-
-			return fileMap.get(key.toLowerCase());
-		} catch (e:Dynamic) {
-			return null;
+		#if (sys && target.threaded) _cacheMutex.acquire(); #end
+		var fileMap:Map<String, String> = _dirNodeCache.get(dir);
+		if (fileMap == null)
+		{
+			fileMap = new Map();
+			try {
+				if (FileSystem.exists(dir) && FileSystem.isDirectory(dir))
+				{
+					for (file in FileSystem.readDirectory(dir)) {
+						fileMap.set(file.toLowerCase(), file);
+					}
+				}
+			} catch (e:Dynamic) {}
+			_dirNodeCache.set(dir, fileMap);
 		}
+		var result:String = fileMap.get(key.toLowerCase());
+		#if (sys && target.threaded) _cacheMutex.release(); #end
+		return result;
 	}
 	#end
 	#end
@@ -657,19 +680,38 @@ class Paths
 		var normalized:String = haxe.io.Path.removeTrailingSlashes(directory.replace('\\', '/'));
 		if(normalized.startsWith('assets/'))
 		{
-			var prefix:String = normalized + '/';
-			for(asset in OpenFlAssets.list())
+			#if (sys && target.threaded) _cacheMutex.acquire(); #end
+			if(_assetsDirMap == null)
 			{
-				var cleanAsset:String = asset.contains(':') ? asset.split(':')[1] : asset;
-				if(cleanAsset.startsWith(prefix))
+				_assetsDirMap = new Map();
+				for(asset in OpenFlAssets.list())
 				{
-					var rest:String = cleanAsset.substr(prefix.length);
-					var slashIdx:Int = rest.indexOf('/');
-					var entryName:String = slashIdx >= 0 ? rest.substr(0, slashIdx) : rest;
-					if(entryName.length > 0 && !dirs.contains(entryName))
-						dirs.push(entryName);
+					var cleanAsset:String = (asset.contains(':') ? asset.split(':')[1] : asset).replace('\\', '/');
+					var parts:Array<String> = cleanAsset.split('/');
+					var curDir:String = '';
+					for(i in 0...parts.length - 1)
+					{
+						curDir = (i == 0) ? parts[0] : (curDir + '/' + parts[i]);
+						var entry:String = parts[i + 1];
+						var arr:Array<String> = _assetsDirMap.get(curDir);
+						if(arr == null)
+						{
+							arr = [];
+							_assetsDirMap.set(curDir, arr);
+						}
+						if(!arr.contains(entry))
+							arr.push(entry);
+					}
 				}
 			}
+			var cachedEntries:Array<String> = _assetsDirMap.get(normalized);
+			if(cachedEntries != null)
+			{
+				for(entryName in cachedEntries)
+					if(!dirs.contains(entryName))
+						dirs.push(entryName);
+			}
+			#if (sys && target.threaded) _cacheMutex.release(); #end
 		}
 		return dirs;
 	}

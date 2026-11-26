@@ -58,8 +58,15 @@ class VideoSprite extends FlxSpriteGroup {
 		{
 			if (videoSprite.bitmap != null && videoSprite.bitmap.bitmapData != null)
 			{
-				final scale:Float = Math.min(FlxG.width / videoSprite.bitmap.bitmapData.width, FlxG.height / videoSprite.bitmap.bitmapData.height);
-				videoSprite.setGraphicSize(videoSprite.bitmap.bitmapData.width * scale, videoSprite.bitmap.bitmapData.height * scale);
+				final bw:Int = videoSprite.bitmap.bitmapData.width;
+				final bh:Int = videoSprite.bitmap.bitmapData.height;
+				if (Math.abs((FlxG.width / FlxG.height) - (bw / bh)) < 0.04)
+					videoSprite.setGraphicSize(FlxG.width + 2, FlxG.height + 2);
+				else
+				{
+					final fitScale:Float = Math.min(FlxG.width / bw, FlxG.height / bh);
+					videoSprite.setGraphicSize(bw * fitScale, bh * fitScale);
+				}
 				videoSprite.updateHitbox();
 				videoSprite.screenCenter();
 			}

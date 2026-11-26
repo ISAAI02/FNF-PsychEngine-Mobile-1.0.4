@@ -54,6 +54,15 @@ jobs:
       - name: Install Libraries
         run: ${{ inputs.setupCommand }}
 
+      - name: Silence hxcpp zlib C23 prototype warnings
+        if: inputs.name != 'Windows'
+        run: |
+          for f in ~/haxelib/hxcpp/git/toolchain/android-toolchain-clang.xml ~/haxelib/hxcpp/git/toolchain/mac-toolchain.xml; do
+            if [ -f "$f" ]; then
+              sed -i.bak 's/<flag value="-Wno-parentheses" \/>/<flag value="-Wno-parentheses" \/><flag value="-Wno-deprecated-non-prototype" \/>/' "$f" || true
+            fi
+          done
+
       - name: Configure Android
         if: inputs.name == 'Android'
         run: |
@@ -64,17 +73,6 @@ jobs:
 
       - name: Compile
         run: haxelib run lime build ${{ inputs.buildArgs }}
-
-      - name: Make IPA
-        if: inputs.name == 'iOS'
-        run: |
-          brew install ldid
-          cd export/release/ios/build/Release-iphoneos/${{ env.PROJECT_NAME }}.app
-          ldid -S../../../${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.entitlements ${{ env.PROJECT_NAME }}
-          cd ..
-          mkdir Payload
-          mv ${{ env.PROJECT_NAME }}.app Payload
-          zip -r ${{ env.PROJECT_NAME }}.ipa Payload
 
       - name: Upload Artifact
         uses: actions/upload-artifact@main

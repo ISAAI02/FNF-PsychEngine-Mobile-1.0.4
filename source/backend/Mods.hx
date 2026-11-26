@@ -222,6 +222,7 @@ class Mods
 
 		File.saveContent(#if android StorageUtil.getExternalStorageDirectory() + #else Sys.getCwd() + #end 'modsList.txt', fileStr);
 		updatedOnState = true;
+		Paths.clearDirCache();
 		//trace('Saved modsList.txt');
 		#end
 	}
@@ -235,5 +236,6 @@ class Mods
 		if(list != null && list[0] != null)
 			Mods.currentModDirectory = list[0];
 		#end
+		Paths.clearDirCache();
 	}
 }

@@ -47,13 +47,17 @@ class MobileScaleMode extends BaseScaleMode
 
 			if (scaleY)
 			{
-				gameSize.x = Width;
-				gameSize.y = Math.floor(gameSize.x / ratio);
+				// Round to multiple of 10 so scaleX = gameSize.x / 1280 has an exact power-of-two float denominator,
+				// preventing 1px glScissor bleed on the right/bottom viewport edge in OpenGL ES.
+				gameSize.x = Width - (Width % 10);
+				gameSize.y = Math.round(gameSize.x / ratio);
+				gameSize.y -= (gameSize.y % 2);
 			}
 			else
 			{
-				gameSize.y = Height;
-				gameSize.x = Math.floor(gameSize.y * ratio);
+				var rawWidth:Int = Math.floor(Height * ratio);
+				gameSize.x = rawWidth - (rawWidth % 10);
+				gameSize.y = Math.min(Height, Math.round(gameSize.x / ratio));
 			}
 		}
 	}
@@ -61,9 +65,15 @@ class MobileScaleMode extends BaseScaleMode
 	override function updateGamePosition():Void
 	{
 		if (ClientPrefs.data.wideScreen && allowWideScreen)
+		{
 			FlxG.game.x = FlxG.game.y = 0;
+		}
 		else
+		{
 			super.updateGamePosition();
+			FlxG.game.x = Math.floor(FlxG.game.x);
+			FlxG.game.y = Math.floor(FlxG.game.y);
+		}
 	}
 
 	@:noCompletion

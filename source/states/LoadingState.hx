@@ -404,6 +404,7 @@ class LoadingState extends MusicBeatState
 	static var dontPreloadDefaultVoices:Bool = false;
 	static function _startPool()
 	{
+		if (threadPool != null) return;
 		#if MULTITHREADED_LOADING
 		// Due to the Main thread and Discord thread, we decrease it by 2.
 		var threadCount:Int = Std.int(Math.max(1, CoolUtil.getCPUThreadsCount() - #if DISCORD_ALLOWED 2 #else 1 #end));
@@ -435,12 +436,16 @@ class LoadingState extends MusicBeatState
 		songsToPrepare = [];
 
 		initialThreadCompleted = false;
+		var prepMutex:Mutex = new Mutex();
 		var threadsCompleted:Int = 0;
 		var threadsMax:Int = 0;
 		function completedThread()
 		{
+			prepMutex.acquire();
 			threadsCompleted++;
-			if(threadsCompleted == threadsMax)
+			var allDone:Bool = (threadsCompleted == threadsMax);
+			prepMutex.release();
+			if(allDone)
 			{
 				clearInvalids();
 				startThreads();
@@ -546,6 +551,10 @@ class LoadingState extends MusicBeatState
 				prepare(imgs, snds, mscs);
 			}
 
+			var pauseSong:String = Paths.formatToSongPath(ClientPrefs.data.pauseMusic);
+			if (pauseSong != null && pauseSong.length > 0 && pauseSong != 'none' && !musicToPrepare.contains(pauseSong))
+				musicToPrepare.push(pauseSong);
+
 			songsToPrepare.push('$folder/Inst');
 
 			var player1:String = song.player1;
@@ -567,24 +576,27 @@ class LoadingState extends MusicBeatState
 					songsToPrepare.push(prefixVocals);
 			}
 
-			if (player2 != player1)
+			var loadP2:Bool = (player2 != player1);
+			var loadGF:Bool = (!stageData.hide_girlfriend && gfVersion != player2 && gfVersion != player1);
+			if (loadP2) threadsMax++;
+			if (loadGF) threadsMax++;
+
+			if (loadP2)
 			{
-				threadsMax++;
 				threadPool.run(() -> {
 					try { preloadCharacter(player2, prefixVocals); } catch (e:Dynamic) {}
 					completedThread();
 				});
 			}
-			if (!stageData.hide_girlfriend && gfVersion != player2 && gfVersion != player1)
+			if (loadGF)
 			{
-				threadsMax++;
 				threadPool.run(() -> {
 					try { preloadCharacter(gfVersion); } catch (e:Dynamic) {}
 					completedThread();
 				});
 			}
 
-			if(threadsCompleted == threadsMax)
+			if(threadsMax == 0)
 			{
 				clearInvalids();
 				startThreads();
@@ -601,7 +613,7 @@ class LoadingState extends MusicBeatState
 	{
 		clearInvalidFrom(imagesToPrepare, 'images', '.png', IMAGE);
 		clearInvalidFrom(soundsToPrepare, 'sounds', '.${Paths.SOUND_EXT}', SOUND);
-		clearInvalidFrom(musicToPrepare, 'music',' .${Paths.SOUND_EXT}', SOUND);
+		clearInvalidFrom(musicToPrepare, 'music', '.${Paths.SOUND_EXT}', SOUND);
 		clearInvalidFrom(songsToPrepare, 'songs', '.${Paths.SOUND_EXT}', SOUND, 'songs');
 
 		for (arr in [imagesToPrepare, soundsToPrepare, musicToPrepare, songsToPrepare])

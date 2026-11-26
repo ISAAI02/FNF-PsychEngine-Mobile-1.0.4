@@ -24,7 +24,8 @@ typedef NoteSplashConfig = {
 	scale:Float,
 	allowRGB:Bool,
 	allowPixel:Bool,
-	rgb:Array<Null<RGB>>
+	rgb:Array<Null<RGB>>,
+	?hasCustomOffsets:Bool
 }
 
 class NoteSplash extends FlxSprite
@@ -106,13 +107,17 @@ class NoteSplash extends FlxSprite
 					rgb: config.rgb
 				}
 
+				var hasOffs:Bool = false;
 				for (i in Reflect.fields(config.animations))
 				{
 					var anim:NoteSplashAnim = Reflect.field(config.animations, i);
 					tempConfig.animations.set(i, anim);
+					if (anim != null && anim.offsets != null && anim.offsets.length >= 2 && (anim.offsets[0] != 0 || anim.offsets[1] != 0))
+						hasOffs = true;
 					if (anim.noteData % 4 == 0)
 						maxAnims++;
 				}
+				tempConfig.hasCustomOffsets = hasOffs;
 
 				this.config = tempConfig;
 				configs.set(path, this.config);
@@ -125,6 +130,7 @@ class NoteSplash extends FlxSprite
 		var anim:String = 'note splash';
 		var fps:Array<Null<Int>> = [22, 26];
 		var offsets:Array<Array<Float>> = [[0, 0]];
+		var hasTxtOffsets:Bool = false;
 		if (Paths.fileExists('$path.txt', TEXT)) // Backwards compatibility with 0.7 splash txts
 		{
 			var configFile:Array<String> = CoolUtil.listFromString(Paths.getTextFromFile('$path.txt'));
@@ -150,6 +156,7 @@ class NoteSplash extends FlxSprite
 								var y:Float = Std.parseFloat(animOffs[1]);
 								if (Math.isNaN(x)) x = 0;
 								if (Math.isNaN(y)) y = 0;
+								if (x != 0 || y != 0) hasTxtOffsets = true;
 								offsets.push([x, y]);
 							}
 						}
@@ -157,6 +164,7 @@ class NoteSplash extends FlxSprite
 				}
 			}
 		}
+		tempConfig.hasCustomOffsets = hasTxtOffsets;
 
 		var failedToFind:Bool = false;
 		while (true)
@@ -188,6 +196,7 @@ class NoteSplash extends FlxSprite
 		configs.set(path, this.config);
 	}
 
+	var _lastRequestedSplash:String = null;
 	public function spawnSplashNote(?x:Float = 0, ?y:Float = 0, ?noteData:Int = 0, ?note:Note, ?randomize:Bool = true)
 	{
 		if (note != null && note.noteSplashData.disabled)
@@ -201,13 +210,14 @@ class NoteSplash extends FlxSprite
 			if (note != null && note.noteSplashData.texture != null) loadedTexture = note.noteSplashData.texture;
 			else if (PlayState.SONG != null && PlayState.SONG.splashSkin != null && PlayState.SONG.splashSkin.length > 0) loadedTexture = PlayState.SONG.splashSkin;
 
-			if (texture != loadedTexture) loadSplash(loadedTexture);
+			if (texture != loadedTexture && _lastRequestedSplash != loadedTexture)
+			{
+				_lastRequestedSplash = loadedTexture;
+				loadSplash(loadedTexture);
+			}
 		}
 
 		setPosition(x, y);
-
-		if (babyArrow != null)
-			setPosition(babyArrow.x - Note.swagWidth * 0.95, babyArrow.y - Note.swagWidth); // To prevent it from being misplaced for one game tick
 
 		if (note != null)
 			noteData = note.noteData;
@@ -277,14 +287,40 @@ class NoteSplash extends FlxSprite
 		if (!config.allowPixel) rgbShader.pixelAmount = 1;
 		else if (PlayState.isPixelStage) rgbShader.pixelAmount = 6;
 
-		offset.set(10, 10);
 		var conf:NoteSplashAnim = config.animations.get(anim);
-		var offsets:Array<Float> = [0, 0];
-		if (conf != null) offsets = conf.offsets;
-		if (offsets != null)
+		if (inEditor || config.hasCustomOffsets == true)
 		{
-			offset.x += offsets[0];
-			offset.y += offsets[1];
+			if (babyArrow != null)
+				setPosition(babyArrow.x - Note.swagWidth * 0.95, babyArrow.y - Note.swagWidth);
+
+			offset.set(10, 10);
+			var offsets:Array<Float> = [0, 0];
+			if (conf != null) offsets = conf.offsets;
+			if (offsets != null)
+			{
+				offset.x += offsets[0];
+				offset.y += offsets[1];
+			}
+		}
+		else
+		{
+			updateHitbox();
+			centerOffsets();
+			centerOrigin();
+			if (babyArrow != null)
+			{
+				setPosition(
+					babyArrow.x + (babyArrow.width - width) * 0.5,
+					babyArrow.y + (babyArrow.height - height) * 0.5
+				);
+			}
+			else
+			{
+				setPosition(
+					x + (Note.swagWidth - width) * 0.5,
+					y + (Note.swagWidth - height) * 0.5
+				);
+			}
 		}
 
 		animation.finishCallback = function(name:String) {
@@ -350,11 +386,22 @@ class NoteSplash extends FlxSprite
 
 		if (babyArrow != null)
 		{
-			if (copyX)
-				x = babyArrow.x - Note.swagWidth * 0.95;
+			if (inEditor || (config != null && config.hasCustomOffsets == true))
+			{
+				if (copyX)
+					x = babyArrow.x - Note.swagWidth * 0.95;
 
-			if (copyY)
-				y = babyArrow.y - Note.swagWidth;
+				if (copyY)
+					y = babyArrow.y - Note.swagWidth;
+			}
+			else
+			{
+				if (copyX)
+					x = babyArrow.x + (babyArrow.width - width) * 0.5;
+
+				if (copyY)
+					y = babyArrow.y + (babyArrow.height - height) * 0.5;
+			}
 		}
 		super.update(elapsed);
 	}
