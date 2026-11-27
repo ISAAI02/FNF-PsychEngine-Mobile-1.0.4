@@ -1,0 +1,357 @@
+package hxvlc.impl.output;
+
+#if hxvlc
+import cpp.CastCharStar;
+import cpp.Function;
+import cpp.NativeArray;
+import cpp.RawPointer;
+import cpp.Stdlib;
+import cpp.UInt32;
+import cpp.VoidStarConstStar;
+
+import haxe.io.BytesData;
+
+import hxvlc.impl.MediaPlayer;
+import hxvlc.impl.externs.LibVLC;
+
+import sys.thread.Mutex;
+
+/**
+ * Hardened LibVLC video output handler that pins frame buffers in native C memory (calloc/free)
+ * instead of HXCPP's movable GC heap so LibVLC's `picture_CopyPixels` never segfaults during GC or backgrounding.
+ */
+@:cppInclude('stdlib.h')
+@:cppInclude('string.h')
+class VideoOutput
+{
+	private static var activeOutputs:Array<VideoOutput> = [];
+
+	/** Called when video frame data is ready to be displayed. */
+	public var onDisplay:Null<(pixels:Null<BytesData>) -> Void>;
+
+	/** Called when the video format is set up with dimensions. */
+	public var onFormatSetup:Null<(width:Int, height:Int) -> Void>;
+
+	@:noCompletion
+	public var suspended:Bool = false;
+
+	@:noCompletion
+	public var disposed:Bool = false;
+
+	@:noCompletion
+	private var mutex:Mutex;
+
+	@:noCompletion
+	private var width:Null<Int>;
+
+	@:noCompletion
+	private var height:Null<Int>;
+
+	@:noCompletion
+	private var pixels:Null<BytesData>;
+
+	@:noCompletion
+	private var rawBuffer:RawPointer<cpp.Void>;
+
+	@:noCompletion
+	private var rawBufferSize:Int = 0;
+
+	@:noCompletion
+	private var outputWidth:Null<Int>;
+
+	@:noCompletion
+	private var outputHeight:Null<Int>;
+
+	@:noCompletion
+	private var chroma:Null<String>;
+
+	@:noCompletion
+	private var bytesPerPixel:Int;
+
+	@:noCompletion
+	private var nativeMediaPlayer:RawPointer<LibVLC_Media_Player_T>;
+
+	public function new(mediaPlayer:MediaPlayer, ?outputWidth:Int, ?outputHeight:Int, chroma:String, bytesPerPixel:Int):Void
+	{
+		if (mediaPlayer.nativeMediaPlayer == null)
+			return;
+
+		this.mutex = new Mutex();
+		this.outputWidth = outputWidth;
+		this.outputHeight = outputHeight;
+		this.chroma = chroma;
+		this.bytesPerPixel = bytesPerPixel;
+		this.nativeMediaPlayer = mediaPlayer.nativeMediaPlayer;
+
+		this.rawBufferSize = 64;
+		this.rawBuffer = untyped __cpp__('calloc(64, 1)');
+		activeOutputs.push(this);
+
+		LibVLC.video_set_callbacks(nativeMediaPlayer, Function.fromStaticFunction(VideoOutputCallbacks.videoLock),
+			Function.fromStaticFunction(VideoOutputCallbacks.videoUnlock), Function.fromStaticFunction(VideoOutputCallbacks.videoDisplay),
+			untyped __cpp__('this'));
+
+		@:nullSafety(Off)
+		LibVLC.video_set_format_callbacks(nativeMediaPlayer, Function.fromStaticFunction(VideoOutputCallbacks.videoFormatSetup), null);
+	}
+
+	public function dispose():Void
+	{
+		if (disposed)
+			return;
+
+		disposed = true;
+		suspended = true;
+
+		if (nativeMediaPlayer != null)
+		{
+			@:nullSafety(Off)
+			{
+				LibVLC.video_set_callbacks(nativeMediaPlayer, null, null, null, null);
+				LibVLC.video_set_format_callbacks(nativeMediaPlayer, null, null);
+			}
+			nativeMediaPlayer = null;
+		}
+
+		if (mutex != null)
+		{
+			mutex.acquire();
+
+			if (rawBuffer != null)
+			{
+				untyped __cpp__('free({0})', rawBuffer);
+				rawBuffer = null;
+			}
+			rawBufferSize = 0;
+			pixels = null;
+
+			mutex.release();
+		}
+
+		onDisplay = null;
+		onFormatSetup = null;
+		activeOutputs.remove(this);
+	}
+}
+
+@:access(hxvlc.impl.output.VideoOutput)
+@:cppInclude('stdlib.h')
+@:cppInclude('string.h')
+@:unreflective
+private class VideoOutputCallbacks
+{
+	@:noCompletion
+	@:noDebug
+	@:unreflective
+	public static function videoLock(data:RawPointer<cpp.Void>, p_pixels:RawPointer<RawPointer<cpp.Void>>):cpp.RawPointer<cpp.Void>
+	{
+		final videoOutput:VideoOutput = untyped __cpp__('reinterpret_cast<VideoOutput_obj *>({0})', data);
+
+		if (videoOutput != null)
+		{
+			untyped __cpp__('int stackBase');
+
+			untyped __cpp__('hx::SetTopOfStack(&stackBase, true)');
+
+			videoOutput.mutex.acquire();
+
+			if (videoOutput.rawBuffer != null)
+				p_pixels[0] = videoOutput.rawBuffer;
+
+			untyped __cpp__('hx::SetTopOfStack((int *)0, true)');
+		}
+
+		@:nullSafety(Off)
+		return null;
+	}
+
+	@:noCompletion
+	@:noDebug
+	@:unreflective
+	public static function videoUnlock(data:RawPointer<cpp.Void>, id:RawPointer<cpp.Void>, p_pixels:VoidStarConstStar):Void
+	{
+		final videoOutput:VideoOutput = untyped __cpp__('reinterpret_cast<VideoOutput_obj *>({0})', data);
+
+		if (videoOutput != null)
+		{
+			untyped __cpp__('int stackBase');
+
+			untyped __cpp__('hx::SetTopOfStack(&stackBase, true)');
+
+			videoOutput.mutex.release();
+
+			untyped __cpp__('hx::SetTopOfStack((int *)0, true)');
+		}
+	}
+
+	@:noCompletion
+	@:noDebug
+	@:unreflective
+	public static function videoDisplay(opaque:RawPointer<cpp.Void>, picture:RawPointer<cpp.Void>):Void
+	{
+		final videoOutput:VideoOutput = untyped __cpp__('reinterpret_cast<VideoOutput_obj *>({0})', opaque);
+
+		if (videoOutput != null && !videoOutput.disposed && !videoOutput.suspended && videoOutput.onDisplay != null)
+		{
+			untyped __cpp__('int stackBase');
+
+			untyped __cpp__('hx::SetTopOfStack(&stackBase, true)');
+
+			#if HXCPP_GC_GENERATIONAL
+			untyped __cpp__('HX_CTX = HX_CTX_GET');
+			#end
+
+			videoOutput.mutex.acquire();
+
+			if (!videoOutput.disposed && !videoOutput.suspended && videoOutput.rawBuffer != null && videoOutput.pixels != null
+				&& videoOutput.width != null && videoOutput.height != null)
+			{
+				final totalBytes:Int = videoOutput.width * videoOutput.height * videoOutput.bytesPerPixel;
+				if (totalBytes > 0 && totalBytes <= videoOutput.rawBufferSize && videoOutput.pixels.length >= totalBytes)
+				{
+					Stdlib.nativeMemcpy(untyped NativeArray.getBase(videoOutput.pixels).getBase(), untyped videoOutput.rawBuffer, totalBytes);
+					if (videoOutput.onDisplay != null)
+						videoOutput.onDisplay(videoOutput.pixels);
+				}
+			}
+
+			videoOutput.mutex.release();
+
+			untyped __cpp__('hx::SetTopOfStack((int *)0, true)');
+		}
+	}
+
+	@:noCompletion
+	@:noDebug
+	@:nullSafety(Off)
+	@:unreflective
+	public static function videoFormatSetup(opaque:RawPointer<RawPointer<cpp.Void>>, chroma:CastCharStar, width:RawPointer<UInt32>, height:RawPointer<UInt32>,
+			pitches:RawPointer<UInt32>, lines:RawPointer<UInt32>):UInt32
+	{
+		final videoOutput:VideoOutput = untyped __cpp__('reinterpret_cast<VideoOutput_obj *>(*{0})', opaque);
+
+		if (videoOutput != null && !videoOutput.disposed && videoOutput.onFormatSetup != null && videoOutput.chroma != null && videoOutput.bytesPerPixel > 0)
+		{
+			untyped __cpp__('int stackBase');
+
+			untyped __cpp__('hx::SetTopOfStack(&stackBase, true)');
+
+			#if HXCPP_GC_GENERATIONAL
+			untyped __cpp__('HX_CTX = HX_CTX_GET');
+			#end
+
+			Stdlib.nativeMemcpy(untyped chroma, untyped cpp.CastCharStar.fromString(videoOutput.chroma), videoOutput.chroma.length);
+
+			videoOutput.mutex.acquire();
+
+			if ((videoOutput.outputWidth != null && videoOutput.outputWidth > 0)
+				&& (videoOutput.outputHeight != null && videoOutput.outputHeight > 0))
+			{
+				width[0] = videoOutput.outputWidth;
+				height[0] = videoOutput.outputHeight;
+			}
+			else
+			{
+				final originalWidth:UInt32 = width[0];
+				final originalHeight:UInt32 = height[0];
+
+				if (!calculateVideoSize(videoOutput.nativeMediaPlayer, width, height))
+				{
+					width[0] = originalWidth;
+					height[0] = originalHeight;
+				}
+			}
+
+			videoOutput.width = width[0];
+			videoOutput.height = height[0];
+
+			pitches[0] = videoOutput.width * videoOutput.bytesPerPixel;
+			lines[0] = videoOutput.height;
+
+			final neededBytes:Int = videoOutput.width * videoOutput.height * videoOutput.bytesPerPixel;
+			if (neededBytes > 0 && (videoOutput.rawBuffer == null || videoOutput.rawBufferSize < neededBytes))
+			{
+				if (videoOutput.rawBuffer != null)
+					untyped __cpp__('free({0})', videoOutput.rawBuffer);
+
+				videoOutput.rawBuffer = untyped __cpp__('calloc((size_t){0}, 1)', neededBytes);
+				videoOutput.rawBufferSize = neededBytes;
+			}
+
+			if (videoOutput.pixels == null)
+				videoOutput.pixels = new BytesData();
+
+			NativeArray.setSize(videoOutput.pixels, neededBytes);
+
+			videoOutput.onFormatSetup(videoOutput.width, videoOutput.height);
+
+			videoOutput.mutex.release();
+
+			untyped __cpp__('hx::SetTopOfStack((int *)0, true)');
+
+			return 1;
+		}
+
+		return 0;
+	}
+
+	@:noCompletion
+	@:noDebug
+	@:unreflective
+	public static function calculateVideoSize(mediaPlayer:RawPointer<LibVLC_Media_Player_T>, width:RawPointer<UInt32>, height:RawPointer<UInt32>):Bool
+	{
+		if (mediaPlayer != null)
+		{
+			final currentMediaItem:RawPointer<LibVLC_Media_T> = LibVLC.media_player_get_media(mediaPlayer);
+
+			if (currentMediaItem != null)
+			{
+				final tracks:RawPointer<RawPointer<LibVLC_Media_Track_T>> = untyped NULL;
+
+				final count:UInt32 = LibVLC.media_tracks_get(currentMediaItem, RawPointer.addressOf(tracks));
+
+				for (i in 0...count)
+				{
+					final track:RawPointer<LibVLC_Media_Track_T> = tracks[i];
+
+					if (track[0].i_type != LibVLC_Track_Video || LibVLC.video_get_track(mediaPlayer) != track[0].i_id)
+						continue;
+
+					var trackWidth:UInt32 = track[0].video[0].i_width;
+					var trackHeight:UInt32 = track[0].video[0].i_height;
+
+					if (trackWidth == 0 || trackHeight == 0)
+						break;
+
+					var trackSarNum:UInt32 = track[0].video[0].i_sar_num;
+					var trackSarDen:UInt32 = track[0].video[0].i_sar_den;
+
+					if (trackSarNum > 0 && trackSarDen > 0)
+					{
+						trackWidth = Math.floor(trackWidth / trackSarDen) * trackSarNum + Math.floor((trackWidth % trackSarDen) * trackSarNum / trackSarDen);
+					}
+
+					if (track[0].video[0].i_orientation == LibVLC_Video_Orient_Right_Bottom)
+					{
+						width[0] = trackHeight;
+						height[0] = trackWidth;
+					}
+					else
+					{
+						width[0] = trackWidth;
+						height[0] = trackHeight;
+					}
+
+					LibVLC.media_tracks_release(tracks, count);
+
+					return true;
+				}
+
+				LibVLC.media_tracks_release(tracks, count);
+			}
+		}
+
+		return false;
+	}
+}
+#end

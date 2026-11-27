@@ -92,7 +92,12 @@ class VideoSprite extends FlxSpriteGroup {
 		}
 
 		if(videoSprite != null)
+		{
 			videoSprite.stop();
+			remove(videoSprite);
+			videoSprite.destroy();
+			videoSprite = null;
+		}
 		
 		finishCallback = null;
 		onSkip = null;

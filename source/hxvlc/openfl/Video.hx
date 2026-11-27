@@ -1,0 +1,994 @@
+package hxvlc.openfl;
+
+#if (hxvlc && openfl)
+import haxe.Int64;
+import haxe.io.Bytes;
+import haxe.io.BytesData;
+import haxe.io.Path;
+
+import hxvlc.impl.Instance;
+import hxvlc.impl.Media;
+import hxvlc.impl.MediaPlayer;
+import hxvlc.impl.Stats;
+import hxvlc.impl.TrackDescription;
+import hxvlc.impl.events.MediaEvents;
+import hxvlc.impl.events.MediaPlayerEvents;
+import hxvlc.impl.output.AudioOutput;
+import hxvlc.impl.output.VideoOutput;
+import hxvlc.openfl.Location;
+import hxvlc.util.Handle;
+import hxvlc.util.MainLoop;
+
+import lime.app.Event;
+import lime.utils.UInt8Array;
+
+import openfl.Lib;
+import openfl.display.Bitmap;
+import openfl.display.BitmapData;
+import openfl.events.Event as OpenFLEvent;
+import openfl.utils.Assets;
+
+import sys.FileSystem;
+
+using StringTools;
+
+#if lime_openal
+import cpp.Stdlib;
+
+import lime.media.openal.AL;
+import lime.media.openal.ALBuffer;
+import lime.media.openal.ALSource;
+#elseif lime_miniaudio
+import cpp.Pointer;
+import cpp.RawPointer;
+
+import lime.media.AudioManager;
+import lime.media.miniaudio.MAAudioRingBuffer;
+import lime.media.miniaudio.MAAudioRingBufferConfig;
+import lime.media.miniaudio.MASound;
+import lime.media.miniaudio.MASoundConfig;
+#end
+
+/** This class is a video player that uses LibVLC for seamless integration with OpenFL display objects. */
+@:access(openfl.display3D.textures.TextureBase)
+@:access(openfl.display.BitmapData)
+class Video extends Bitmap
+{
+	public var mrl(get, never):Null<String>;
+	public var duration(get, never):Int64;
+	public var stats(get, never):Null<Stats>;
+	public var isPlaying(get, never):Bool;
+	public var length(get, never):Int64;
+	public var time(get, set):Int64;
+	public var position(get, set):Single;
+	public var rate(get, set):Single;
+	public var volume(get, set):Float;
+	public var isSeekable(get, never):Bool;
+	public var videoTrackCount(get, never):Int;
+	public var videoTrack(get, set):Int;
+	public var audioTrackCount(get, never):Int;
+	public var audioTrack(get, set):Int;
+	public var spuTrackCount(get, never):Int;
+	public var spuTrack(get, set):Int;
+
+	public var onOpening(default, null):Event<Void->Void> = new Event<Void->Void>();
+	public var onPlaying(default, null):Event<Void->Void> = new Event<Void->Void>();
+	public var onStopped(default, null):Event<Void->Void> = new Event<Void->Void>();
+	public var onPaused(default, null):Event<Void->Void> = new Event<Void->Void>();
+	public var onEndReached(default, null):Event<Void->Void> = new Event<Void->Void>();
+	public var onEncounteredError(default, null):Event<String->Void> = new Event<String->Void>();
+	public var onESAdded(default, null):Event<Int->Int->Void> = new Event<Int->Int->Void>();
+	public var onESDeleted(default, null):Event<Int->Int->Void> = new Event<Int->Int->Void>();
+	public var onESSelected(default, null):Event<Int->Int->Void> = new Event<Int->Int->Void>();
+	public var onCorked(default, null):Event<Void->Void> = new Event<Void->Void>();
+	public var onUncorked(default, null):Event<Void->Void> = new Event<Void->Void>();
+	public var onTimeChanged(default, null):Event<Int64->Void> = new Event<Int64->Void>();
+	public var onPositionChanged(default, null):Event<Single->Void> = new Event<Single->Void>();
+	public var onLengthChanged(default, null):Event<Int64->Void> = new Event<Int64->Void>();
+	public var onMediaChanged(default, null):Event<Media->Void> = new Event<Media->Void>();
+	public var onMediaMetaChanged(default, null):Event<Int->Void> = new Event<Int->Void>();
+	public var onMediaParsedChanged(default, null):Event<Int->Void> = new Event<Int->Void>();
+	public var onMediaSubItemAdded(default, null):Event<Media->Void> = new Event<Media->Void>();
+	public var onMediaDurationChanged(default, null):Event<Int64->Void> = new Event<Int64->Void>();
+	public var onMediaSubItemTreeAdded(default, null):Event<Media->Void> = new Event<Media->Void>();
+	public var onFormatSetup(default, null):Event<Void->Void> = new Event<Void->Void>();
+
+	@:noCompletion
+	private var instance:Null<Instance>;
+
+	@:noCompletion
+	private var mediaPlayer:MediaPlayer;
+
+	@:noCompletion
+	private var mediaPlayerEvents:MediaPlayerEvents;
+
+	@:noCompletion
+	private var mediaEvents:Null<MediaEvents>;
+
+	@:noCompletion
+	private var videoOutput:Null<VideoOutput>;
+
+	@:noCompletion
+	private var audioOutput:Null<AudioOutput>;
+
+	@:noCompletion
+	private var inBackground:Bool = false;
+
+	@:noCompletion
+	private var pendingSetupWidth:Int = 0;
+
+	@:noCompletion
+	private var pendingSetupHeight:Int = 0;
+
+	#if lime_openal
+	#if lime_funkin
+	@:noCompletion
+	private var alUseSOFT_direct_channels:Null<Bool>;
+	#end
+
+	@:noCompletion
+	private var alSource:Null<ALSource>;
+
+	@:noCompletion
+	private var alBufferPool:Null<Array<ALBuffer>>;
+
+	@:noCompletion
+	private var alQueuedBuffers:Null<Array<ALBuffer>>;
+
+	@:noCompletion
+	private var alSampleRate:Null<Int>;
+
+	@:noCompletion
+	private var alFormat:Null<Int>;
+
+	@:noCompletion
+	private var alFrameSize:Null<Int>;
+	#elseif lime_miniaudio
+	@:noCompletion
+	private var maAudioRingBuffer:Null<MAAudioRingBuffer>;
+
+	@:noCompletion
+	private var maSound:Null<MASound>;
+
+	@:noCompletion
+	private var maSoundInitialGain:Float = 1;
+	#end
+
+	@:nullSafety(Off)
+	public function new(?instance:Instance, smoothing:Bool = true):Void
+	{
+		super(new BitmapData(1, 1, true, 0x000000), NEVER, smoothing);
+
+		if (instance == null)
+		{
+			while (Handle.loading)
+				Sys.sleep(0.05);
+
+			Handle.init();
+
+			instance = Handle.sharedInstance;
+		}
+
+		this.instance = instance;
+
+		this.mediaPlayer = new MediaPlayer(instance);
+
+		this.mediaPlayerEvents = new MediaPlayerEvents(mediaPlayer);
+
+		this.mediaPlayerEvents.onOpening = () -> MainLoop.runInMainThread(() -> onOpening.dispatch());
+		this.mediaPlayerEvents.onPlaying = () -> MainLoop.runInMainThread(() -> onPlaying.dispatch());
+		this.mediaPlayerEvents.onStopped = () -> MainLoop.runInMainThread(() -> onStopped.dispatch());
+		this.mediaPlayerEvents.onPaused = () -> MainLoop.runInMainThread(() -> onPaused.dispatch());
+		this.mediaPlayerEvents.onEndReached = () -> MainLoop.runInMainThread(() -> onEndReached.dispatch());
+		this.mediaPlayerEvents.onEncounteredError = () -> MainLoop.runInMainThread(() -> onEncounteredError.dispatch('Unknown Error'));
+		this.mediaPlayerEvents.onCorked = () -> MainLoop.runInMainThread(() -> onCorked.dispatch());
+		this.mediaPlayerEvents.onUncorked = () -> MainLoop.runInMainThread(() -> onUncorked.dispatch());
+		this.mediaPlayerEvents.onESAdded = (type:Int, id:Int) -> MainLoop.runInMainThread(() -> onESAdded.dispatch(type, id));
+		this.mediaPlayerEvents.onESDeleted = (type:Int, id:Int) -> MainLoop.runInMainThread(() -> onESDeleted.dispatch(type, id));
+		this.mediaPlayerEvents.onESSelected = (type:Int, id:Int) -> MainLoop.runInMainThread(() -> onESSelected.dispatch(type, id));
+		this.mediaPlayerEvents.onTimeChanged = (time:Int64) -> MainLoop.runInMainThread(() -> onTimeChanged.dispatch(time));
+		this.mediaPlayerEvents.onPositionChanged = (position:Single) -> MainLoop.runInMainThread(() -> onPositionChanged.dispatch(position));
+		this.mediaPlayerEvents.onLengthChanged = (length:Int64) -> MainLoop.runInMainThread(() -> onLengthChanged.dispatch(length));
+		this.mediaPlayerEvents.onMediaChanged = (media:Media) -> MainLoop.runInMainThread(() -> onMediaChanged.dispatch(media));
+
+		setupVideo();
+
+		setupAudio();
+
+		if (Lib.current != null && Lib.current.stage != null)
+		{
+			#if (sys && openfl >= "9.3.0")
+			if (Lib.current.stage.nativeWindow != null)
+			{
+				Lib.current.stage.nativeWindow.addEventListener(OpenFLEvent.DEACTIVATE, onStageDeactivate);
+				Lib.current.stage.nativeWindow.addEventListener(OpenFLEvent.ACTIVATE, onStageActivate);
+			}
+			else
+			#end
+			{
+				Lib.current.stage.addEventListener(OpenFLEvent.DEACTIVATE, onStageDeactivate);
+				Lib.current.stage.addEventListener(OpenFLEvent.ACTIVATE, onStageActivate);
+			}
+		}
+	}
+
+	@:noCompletion
+	private function onStageDeactivate(_:OpenFLEvent):Void
+	{
+		#if mobile
+		inBackground = true;
+		if (videoOutput != null)
+			videoOutput.suspended = true;
+		#end
+	}
+
+	@:noCompletion
+	private function onStageActivate(_:OpenFLEvent):Void
+	{
+		#if mobile
+		inBackground = false;
+		if (videoOutput != null && !videoOutput.disposed)
+		{
+			videoOutput.suspended = false;
+			if (pendingSetupWidth > 0 && pendingSetupHeight > 0)
+			{
+				final w:Int = pendingSetupWidth;
+				final h:Int = pendingSetupHeight;
+				pendingSetupWidth = 0;
+				pendingSetupHeight = 0;
+				videoOutput_onSetup(w, h);
+			}
+		}
+		#end
+	}
+
+	public function load(location:Location, ?options:Array<String>):Bool
+	{
+		if (location != null && !(location is Bytes) && (location is String))
+		{
+			final location:String = cast(location, String);
+
+			if (!location.contains('://'))
+			{
+				final absolutePath:String = FileSystem.absolutePath(location);
+
+				if (FileSystem.exists(absolutePath))
+					return loadInternal(absolutePath, options);
+				else if (Assets.exists(location))
+				{
+					final assetPath:Null<String> = Assets.getPath(location);
+
+					if (assetPath != null)
+					{
+						if (FileSystem.exists(assetPath) && Path.isAbsolute(assetPath))
+							return loadInternal(assetPath, options);
+						else if (FileSystem.exists(assetPath) && !Path.isAbsolute(assetPath))
+							return loadInternal(FileSystem.absolutePath(assetPath), options);
+						else if (!Path.isAbsolute(assetPath))
+						{
+							try
+							{
+								final assetBytes:Bytes = Assets.getBytes(location);
+
+								if (assetBytes != null)
+									return loadInternal(assetBytes, options);
+							}
+							catch (e:Dynamic)
+								return false;
+						}
+					}
+
+					return false;
+				}
+				else
+				{
+					return false;
+				}
+			}
+		}
+
+		return loadInternal(location, options);
+	}
+
+	public function precache(location:Location, ?options:Array<String>):Bool
+	{
+		if (load(location, options) && play())
+		{
+			pause();
+
+			return true;
+		}
+
+		return false;
+	}
+
+	public function loadFromSubItem(index:Int, ?options:Array<String>):Bool
+	{
+		return setMediaToMediaPlayer(mediaPlayer.media?.subitems()[index], options);
+	}
+
+	public function parseWithOptions(parse_flag:Int, timeout:Int):Bool
+	{
+		return mediaPlayer.media?.parseWithOptions(parse_flag, timeout) ?? false;
+	}
+
+	public function parseStop():Void
+	{
+		mediaPlayer.media?.parseStop();
+	}
+
+	public function addSlave(type:Int, location:String, select:Bool):Bool
+	{
+		function convertAbsToURL(path:String):String
+		{
+			#if windows
+			return 'file:///${Path.normalize(FileSystem.absolutePath(path))}';
+			#else
+			return 'file://${Path.normalize(FileSystem.absolutePath(path))}';
+			#end
+		}
+
+		if (!location.contains('://'))
+		{
+			final absolutePath:String = FileSystem.absolutePath(location);
+
+			if (FileSystem.exists(absolutePath))
+				return mediaPlayer.addSlave(type, convertAbsToURL(location), select);
+			else if (Assets.exists(location))
+			{
+				final assetPath:Null<String> = Assets.getPath(location);
+
+				if (assetPath != null)
+				{
+					if (FileSystem.exists(assetPath) && Path.isAbsolute(assetPath))
+						return mediaPlayer.addSlave(type, convertAbsToURL(assetPath), select);
+					else if (FileSystem.exists(assetPath) && !Path.isAbsolute(assetPath))
+						return mediaPlayer.addSlave(type, FileSystem.absolutePath(assetPath), select);
+				}
+
+				return false;
+			}
+		}
+
+		return mediaPlayer.addSlave(type, location, select);
+	}
+
+	public function getVideoDescription():Array<TrackDescription>
+	{
+		return mediaPlayer.getVideoDescription();
+	}
+
+	public function getAudioDescription():Array<TrackDescription>
+	{
+		return mediaPlayer.getAudioDescription();
+	}
+
+	public function getSpuDescription():Array<TrackDescription>
+	{
+		return mediaPlayer.getSpuDescription();
+	}
+
+	public function play():Bool
+	{
+		return mediaPlayer.play();
+	}
+
+	public function stop():Void
+	{
+		mediaPlayer.stop();
+	}
+
+	public function pause():Void
+	{
+		mediaPlayer.pause();
+	}
+
+	public function resume():Void
+	{
+		mediaPlayer.resume();
+	}
+
+	public function togglePaused():Void
+	{
+		mediaPlayer.togglePaused();
+	}
+
+	public function getMeta(e_meta:Int):Null<String>
+	{
+		return mediaPlayer.media?.getMeta(e_meta);
+	}
+
+	public function setMeta(e_meta:Int, value:String):Void
+	{
+		mediaPlayer.media?.setMeta(e_meta, value);
+	}
+
+	public function saveMeta():Bool
+	{
+		return mediaPlayer.media?.saveMeta() ?? false;
+	}
+
+	public function dispose():Void
+	{
+		if (Lib.current != null && Lib.current.stage != null)
+		{
+			#if (sys && openfl >= "9.3.0")
+			if (Lib.current.stage.nativeWindow != null)
+			{
+				Lib.current.stage.nativeWindow.removeEventListener(OpenFLEvent.DEACTIVATE, onStageDeactivate);
+				Lib.current.stage.nativeWindow.removeEventListener(OpenFLEvent.ACTIVATE, onStageActivate);
+			}
+			else
+			#end
+			{
+				Lib.current.stage.removeEventListener(OpenFLEvent.DEACTIVATE, onStageDeactivate);
+				Lib.current.stage.removeEventListener(OpenFLEvent.ACTIVATE, onStageActivate);
+			}
+		}
+
+		if (videoOutput != null)
+			videoOutput.suspended = true;
+
+		if (mediaPlayer != null)
+			mediaPlayer.stop();
+
+		if (videoOutput != null)
+		{
+			videoOutput.dispose();
+			videoOutput = null;
+		}
+
+		if (mediaPlayer != null)
+			mediaPlayer.destroy();
+
+		if (bitmapData != null)
+			bitmapData.dispose();
+
+		#if lime_openal
+		if (alSource != null)
+		{
+			if (AL.getSourcei(alSource, AL.SOURCE_STATE) != AL.STOPPED)
+				AL.sourceStop(alSource);
+
+			if (alBufferPool != null)
+			{
+				for (alBuffer in AL.sourceUnqueueBuffers(alSource, AL.getSourcei(alSource, AL.BUFFERS_QUEUED)))
+					alBufferPool.push(alBuffer);
+			}
+
+			AL.deleteSource(alSource);
+
+			alSource = null;
+		}
+
+		if (alBufferPool != null)
+		{
+			AL.deleteBuffers(alBufferPool);
+			alBufferPool = null;
+		}
+
+		alQueuedBuffers = null;
+		#elseif lime_miniaudio
+		if (maAudioRingBuffer != null)
+		{
+			maAudioRingBuffer.uninit();
+			maAudioRingBuffer = null;
+		}
+
+		if (maSound != null)
+		{
+			maSound.stop();
+			maSound.uninit();
+			maSound = null;
+		}
+
+		maSoundInitialGain = 0;
+		#end
+	}
+
+	@:noCompletion
+	private function get_mrl():Null<String>
+	{
+		return mediaPlayer.media?.mrl;
+	}
+
+	@:noCompletion
+	private function get_stats():Null<Stats>
+	{
+		return mediaPlayer.media?.stats;
+	}
+
+	@:noCompletion
+	private function get_duration():Int64
+	{
+		return mediaPlayer.media?.duration ?? -1;
+	}
+
+	@:noCompletion
+	private function get_isPlaying():Bool
+	{
+		return mediaPlayer.isPlaying;
+	}
+
+	@:noCompletion
+	private function get_length():Int64
+	{
+		return mediaPlayer.length;
+	}
+
+	@:noCompletion
+	private function get_time():Int64
+	{
+		return mediaPlayer.time;
+	}
+
+	@:noCompletion
+	private function set_time(value:Int64):Int64
+	{
+		return mediaPlayer.time = value;
+	}
+
+	@:noCompletion
+	private function get_position():Single
+	{
+		return mediaPlayer.position;
+	}
+
+	@:noCompletion
+	private function set_position(value:Single):Single
+	{
+		return mediaPlayer.position = value;
+	}
+
+	@:noCompletion
+	private function get_rate():Single
+	{
+		return mediaPlayer.rate;
+	}
+
+	@:noCompletion
+	private function set_rate(value:Single):Single
+	{
+		return mediaPlayer.rate = value;
+	}
+
+	@:noCompletion
+	private function get_volume():Float
+	{
+		#if lime_openal
+		return alSource != null ? AL.getSourcef(alSource, AL.GAIN) : 1;
+		#elseif lime_miniaudio
+		return maSound != null ? maSound.get_volume() : maSoundInitialGain;
+		#else
+		return 1;
+		#end
+	}
+
+	@:noCompletion
+	private function set_volume(value:Float):Float
+	{
+		#if lime_openal
+		if (alSource != null)
+		{
+			AL.sourcef(alSource, AL.GAIN, value);
+		}
+		#elseif lime_miniaudio
+		if (maSound != null)
+		{
+			maSound.set_volume(value);
+		}
+		else
+		{
+			maSoundInitialGain = value;
+		}
+		#end
+
+		return value;
+	}
+
+	@:noCompletion
+	private function get_isSeekable():Bool
+	{
+		return mediaPlayer.isSeekable;
+	}
+
+	@:noCompletion
+	private function get_videoTrackCount():Int
+	{
+		return mediaPlayer.videoTrackCount;
+	}
+
+	@:noCompletion
+	private function get_videoTrack():Int
+	{
+		return mediaPlayer.videoTrack;
+	}
+
+	@:noCompletion
+	private function set_videoTrack(value:Int):Int
+	{
+		return mediaPlayer.videoTrack = value;
+	}
+
+	@:noCompletion
+	private function get_audioTrackCount():Int
+	{
+		return mediaPlayer.audioTrackCount;
+	}
+
+	@:noCompletion
+	private function get_audioTrack():Int
+	{
+		return mediaPlayer.audioTrack;
+	}
+
+	@:noCompletion
+	private function set_audioTrack(value:Int):Int
+	{
+		return mediaPlayer.audioTrack = value;
+	}
+
+	@:noCompletion
+	private function get_spuTrackCount():Int
+	{
+		return mediaPlayer.spuTrackCount;
+	}
+
+	@:noCompletion
+	private function get_spuTrack():Int
+	{
+		return mediaPlayer.spuTrack;
+	}
+
+	@:noCompletion
+	private function set_spuTrack(value:Int):Int
+	{
+		return mediaPlayer.spuTrack = value;
+	}
+
+	@:noCompletion
+	private override function set_bitmapData(value:BitmapData):BitmapData
+	{
+		__bitmapData = value;
+		__setRenderDirty();
+		return __bitmapData;
+	}
+
+	@:noCompletion
+	private override function __enterFrame(_):Void {}
+
+	@:noCompletion
+	private function loadInternal(location:Location, ?options:Array<String>):Bool
+	{
+		var media:Null<Media> = null;
+
+		if (location != null)
+		{
+			@:nullSafety(Off)
+			{
+				if ((location is String))
+				{
+					if (location.contains('://'))
+						media = Media.fromLocation(instance, location);
+					else
+						media = Media.fromPath(instance, location);
+				}
+				else if ((location is Bytes))
+					media = Media.fromBytes(instance, cast(location, Bytes));
+			}
+		}
+
+		return setMediaToMediaPlayer(media, options);
+	}
+
+	@:noCompletion
+	private function setMediaToMediaPlayer(media:Null<Media>, ?options:Array<String>):Bool
+	{
+		if (media != null)
+		{
+			#if android
+			// Force FFmpeg software decoding in CPU RAM on Android so backgrounding never segfaults
+			// inside picture_CopyPixels due to Android OS revoking MediaCodec hardware graphic buffers.
+			var hasCustomCodec:Bool = false;
+			if (options != null)
+			{
+				for (opt in options)
+				{
+					if (opt != null && opt.contains('codec='))
+					{
+						hasCustomCodec = true;
+						break;
+					}
+				}
+			}
+			if (!hasCustomCodec)
+			{
+				media.addOption(':codec=avcodec,all');
+				media.addOption(':avcodec-hw=none');
+			}
+			#end
+
+			if (options != null && options.length > 0)
+			{
+				for (option in options)
+					media.addOption(option);
+			}
+
+			mediaEvents = new MediaEvents(media);
+			mediaEvents.onMetaChanged = (type:Int) -> MainLoop.runInMainThread(() -> onMediaMetaChanged.dispatch(type));
+			mediaEvents.onParsedChanged = (status:Int) -> MainLoop.runInMainThread(() -> onMediaParsedChanged.dispatch(status));
+			mediaEvents.onSubItemAdded = (child:Media) -> MainLoop.runInMainThread(() -> onMediaSubItemAdded.dispatch(child));
+			mediaEvents.onDurationChanged = (duration:Int64) -> MainLoop.runInMainThread(() -> onMediaDurationChanged.dispatch(duration));
+			mediaEvents.onSubItemTreeAdded = (item:Media) -> MainLoop.runInMainThread(() -> onMediaSubItemTreeAdded.dispatch(item));
+
+			mediaPlayer.media = media;
+
+			media.destroy();
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@:noCompletion
+	private function setupVideo():Void
+	{
+		videoOutput = new VideoOutput(mediaPlayer, "RV32", 4);
+		videoOutput.onFormatSetup = (width:Int, height:Int) -> MainLoop.runInMainThread(() -> videoOutput_onSetup(width, height));
+		videoOutput.onDisplay = (pixels:BytesData) -> MainLoop.runInMainThread(() -> videoOutput_onDisplay(pixels));
+	}
+
+	@:noCompletion
+	private function videoOutput_onSetup(width:Int, height:Int):Void
+	{
+		if (videoOutput == null || videoOutput.disposed)
+			return;
+
+		if (inBackground || Lib.current.stage?.context3D == null)
+		{
+			pendingSetupWidth = width;
+			pendingSetupHeight = height;
+			return;
+		}
+
+		if (bitmapData != null && (bitmapData.width == width && bitmapData.height == height))
+			return;
+
+		if (bitmapData != null)
+			bitmapData.dispose();
+
+		bitmapData = new BitmapData(0, 0, true, 0);
+
+		bitmapData.rect.setTo(0, 0, width, height);
+
+		bitmapData.__texture = new Texture(Lib.current.stage.context3D, width, height);
+		bitmapData.__textureContext = bitmapData.__texture.__textureContext;
+		bitmapData.__resize(width, height);
+		bitmapData.__isValid = true;
+
+		onFormatSetup.dispatch();
+	}
+
+	@:noCompletion
+	private function videoOutput_onDisplay(pixels:BytesData):Void
+	{
+		if (inBackground || videoOutput == null || videoOutput.disposed || bitmapData == null || bitmapData.__texture == null)
+			return;
+
+		cast(bitmapData.__texture, Texture).uploadFromTypedArray(UInt8Array.fromBytes(Bytes.ofData(pixels)));
+
+		__setRenderDirty();
+	}
+
+	@:noCompletion
+	private function setupAudio():Void
+	{
+		#if lime_openal
+		#if lime_funkin
+		alUseSOFT_direct_channels ??= AL.isExtensionPresent("AL_SOFT_direct_channels")
+			&& AL.isExtensionPresent("AL_SOFT_direct_channels_remix");
+		#end
+		alSource ??= AL.createSource();
+		alBufferPool ??= AL.genBuffers(64);
+		alQueuedBuffers ??= [];
+
+		#if lime_funkin
+		if (alUseSOFT_direct_channels == true)
+		{
+			AL.sourcei(alSource, AL.DIRECT_CHANNELS_SOFT, AL.REMIX_UNMATCHED_SOFT);
+		}
+		#end
+		#end
+
+		audioOutput = new AudioOutput(mediaPlayer);
+		audioOutput.onMapFormat = audioOutput_onMapFormat;
+		audioOutput.onMapChannels = audioOutput_onMapChannels;
+		audioOutput.onMapRate = audioOutput_onMapRate;
+		audioOutput.onFormatSetup = audioOutput_onFormatSetup;
+		audioOutput.onPlay = audioOutput_onPlay;
+		audioOutput.onPause = audioOutput_onPause;
+		audioOutput.onResume = audioOutput_onResume;
+		audioOutput.onFlush = audioOutput_onFlush;
+	}
+
+	@:noCompletion
+	private function audioOutput_onMapFormat(format:String):String
+	{
+		#if (lime_openal || lime_miniaudio)
+		return 'S16N';
+		#else
+		return format;
+		#end
+	}
+
+	@:noCompletion
+	private function audioOutput_onMapChannels(channels:Int):Int
+	{
+		#if lime_openal
+		return channels == 1 ? 1 : 2;
+		#else
+		return channels;
+		#end
+	}
+
+	@:noCompletion
+	private function audioOutput_onMapRate(rate:Int):Int
+	{
+		return rate;
+	}
+
+	@:noCompletion
+	private function audioOutput_onFormatSetup(format:String, rate:Int, channels:Int):Bool
+	{
+		#if lime_openal
+		alSampleRate = rate;
+
+		switch (channels)
+		{
+			case 1:
+				alFormat = AL.getEnumValue('AL_FORMAT_MONO16');
+			case 2:
+				alFormat = AL.getEnumValue('AL_FORMAT_STEREO16');
+		}
+
+		alFrameSize = Stdlib.sizeof(cpp.Int16) * channels;
+
+		return true;
+		#elseif lime_miniaudio
+		maAudioRingBuffer = MAAudioRingBuffer.init(MAAudioRingBufferConfig.init(S16, channels, rate, rate * 2));
+
+		if (maAudioRingBuffer != null)
+		{
+			final config:MASoundConfig = MASoundConfig.init();
+
+			config.flags = MASound.FLAG_NO_SPATIALIZATION;
+			config.pDataSource = maAudioRingBuffer;
+
+			maSound = MASound.init(AudioManager.engine, config);
+
+			if (maSound != null)
+			{
+				maSound.set_volume(maSoundInitialGain);
+
+				return true;
+			}
+		}
+
+		return false;
+		#else
+		return false;
+		#end
+	}
+
+	@:noCompletion
+	private function audioOutput_onPlay(samples:BytesData):Void
+	{
+		#if lime_openal
+		if (alSource != null && alBufferPool != null && alQueuedBuffers != null && alFormat != null && alFrameSize != null && alSampleRate != null)
+		{
+			final processed:Int = AL.getSourcei(alSource, AL.BUFFERS_PROCESSED);
+
+			if (processed > 0)
+			{
+				final alUnqueuedBuffers:Array<ALBuffer> = AL.sourceUnqueueBuffers(alSource, processed);
+
+				for (alBuffer in alUnqueuedBuffers)
+				{
+					alBufferPool.push(alBuffer);
+				}
+
+				alQueuedBuffers.splice(0, processed);
+			}
+
+			var alBuffer:Null<ALBuffer> = alBufferPool.shift();
+
+			alBuffer ??= AL.createBuffer();
+
+			if (alBuffer != null)
+			{
+				AL.bufferData(alBuffer, alFormat, UInt8Array.fromBytes(Bytes.ofData(samples)), samples.length * alFrameSize, alSampleRate);
+
+				AL.sourceQueueBuffer(alSource, alBuffer);
+
+				alQueuedBuffers.push(alBuffer);
+
+				if (AL.getSourcei(alSource, AL.SOURCE_STATE) != AL.PLAYING)
+					AL.sourcePlay(alSource);
+			}
+		}
+		#elseif lime_miniaudio
+		if (maAudioRingBuffer != null && maSound != null)
+		{
+			maAudioRingBuffer.write_pcm_frames(Pointer.ofArray(samples), samples.length);
+
+			if (maSound != null && !maSound.is_playing())
+			{
+				maSound.start();
+			}
+		}
+		#end
+	}
+
+	@:noCompletion
+	private function audioOutput_onPause():Void
+	{
+		#if lime_openal
+		if (alSource != null && AL.getSourcei(alSource, AL.SOURCE_STATE) != AL.PAUSED)
+		{
+			AL.sourcePause(alSource);
+		}
+		#elseif lime_miniaudio
+		if (maSound != null && maSound.is_playing())
+		{
+			maSound.stop();
+		}
+		#end
+	}
+
+	@:noCompletion
+	private function audioOutput_onResume():Void
+	{
+		#if lime_openal
+		if (alSource != null && AL.getSourcei(alSource, AL.SOURCE_STATE) == AL.PAUSED)
+		{
+			AL.sourcePlay(alSource);
+		}
+		#elseif lime_miniaudio
+		if (maSound != null && !maSound.is_playing())
+		{
+			maSound.start();
+		}
+		#end
+	}
+
+	@:noCompletion
+	private function audioOutput_onFlush():Void
+	{
+		#if lime_openal
+		if (alSource != null && AL.getSourcei(alSource, AL.SOURCE_STATE) != AL.STOPPED)
+		{
+			AL.sourceStop(alSource);
+		}
+		#elseif lime_miniaudio
+		if (maSound != null && maSound.is_playing())
+			maSound.stop();
+
+		if (maAudioRingBuffer != null)
+		{
+			final frameCount:Int = maAudioRingBuffer.get_length_in_pcm_frames();
+
+			if (frameCount > 0)
+			{
+				final mappedBuffer:RawPointer<cpp.Void> = untyped NULL;
+
+				final mappedFrameCount:Int = maAudioRingBuffer.map_consume(frameCount, Pointer.fromRaw(RawPointer.addressOf(mappedBuffer)));
+
+				if (mappedFrameCount > 0)
+					maAudioRingBuffer.unmap_consume(mappedFrameCount);
+			}
+		}
+		#end
+	}
+}
+#end

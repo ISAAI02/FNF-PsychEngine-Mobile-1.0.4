@@ -152,7 +152,6 @@ class Main extends Sprite
 		#if LUA_ALLOWED Lua.set_callbacks_function(cpp.Callable.fromStaticFunction(psychlua.CallbackHandler.call)); #end
 		Controls.instance = new Controls();
 		ClientPrefs.loadDefaultKeys();
-		HapticUtil.init();
 		#if ACHIEVEMENTS_ALLOWED Achievements.load(); #end
 		#if mobile
 		FlxG.signals.postGameStart.addOnce(() -> {

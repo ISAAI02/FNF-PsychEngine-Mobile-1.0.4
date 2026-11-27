@@ -44,8 +44,15 @@ class HapticUtil
 		#if FEATURE_HAPTICS
 		if (!_initialized)
 		{
-			Haptic.initialize();
-			_initialized = true;
+			try
+			{
+				Haptic.initialize();
+				_initialized = true;
+			}
+			catch (e:Dynamic)
+			{
+				trace('[HapticUtil] Failed to initialize haptics: $e');
+			}
 		}
 		#end
 	}
@@ -72,30 +79,34 @@ class HapticUtil
 
 		var sharpValue:Float = FlxMath.bound(sharpness, 0.0, 1.0);
 
-		if (period > 0.0)
+		try
 		{
-			var durations:Array<Float> = [];
-			var amplitudes:Array<Float> = [];
-			var sharpnesses:Array<Float> = [];
-
-			var durationPeriod:Float = period / 2.0;
-			if (durationPeriod <= 0.001)
-				durationPeriod = 0.001;
-
-			var steps:Int = Math.ceil(duration / durationPeriod);
-			for (i in 0...steps)
+			if (period > 0.0)
 			{
-				durations.push(durationPeriod);
-				amplitudes.push(amplitudeValue);
-				sharpnesses.push(sharpValue);
-			}
+				var durations:Array<Float> = [];
+				var amplitudes:Array<Float> = [];
+				var sharpnesses:Array<Float> = [];
 
-			Haptic.vibratePattern(durations, amplitudes, sharpnesses);
+				var durationPeriod:Float = period / 2.0;
+				if (durationPeriod <= 0.001)
+					durationPeriod = 0.001;
+
+				var steps:Int = Math.ceil(duration / durationPeriod);
+				for (i in 0...steps)
+				{
+					durations.push(durationPeriod);
+					amplitudes.push(amplitudeValue);
+					sharpnesses.push(sharpValue);
+				}
+
+				Haptic.vibratePattern(durations, amplitudes, sharpnesses);
+			}
+			else
+			{
+				Haptic.vibrateOneShot(duration, amplitudeValue, sharpValue);
+			}
 		}
-		else
-		{
-			Haptic.vibrateOneShot(duration, amplitudeValue, sharpValue);
-		}
+		catch (e:Dynamic) {}
 		#end
 	}
 
