@@ -1088,7 +1088,13 @@ class PlayState extends MusicBeatState
 				if(!skipArrowStartTween)
 				{
 					notes.forEachAlive(function(note:Note) {
-						if(ClientPrefs.data.opponentStrums || note.mustPress)
+						if (MobileData.mode == 4 && !note.mustPress)
+						{
+							note.copyAlpha = false;
+							note.visible = false;
+							note.alpha = 0;
+						}
+						else if(ClientPrefs.data.opponentStrums || note.mustPress)
 						{
 							note.copyAlpha = false;
 							note.alpha = note.multAlpha;
@@ -1433,6 +1439,13 @@ class PlayState extends MusicBeatState
 				swagNote.mustPress = gottaHitNote;
 				swagNote.sustainLength = holdLength;
 				swagNote.noteType = noteType;
+				if (MobileData.mode == 4 && !swagNote.mustPress)
+				{
+					swagNote.visible = false;
+					swagNote.multAlpha = 0;
+					swagNote.copyAlpha = false;
+					swagNote.alpha = 0;
+				}
 	
 				swagNote.scrollFactor.set();
 				unspawnNotes.push(swagNote);
@@ -1452,6 +1465,13 @@ class PlayState extends MusicBeatState
 						sustainNote.noteType = swagNote.noteType;
 						sustainNote.scrollFactor.set();
 						sustainNote.parent = swagNote;
+						if (MobileData.mode == 4 && !sustainNote.mustPress)
+						{
+							sustainNote.visible = false;
+							sustainNote.multAlpha = 0;
+							sustainNote.copyAlpha = false;
+							sustainNote.alpha = 0;
+						}
 						unspawnNotes.push(sustainNote);
 						swagNote.tail.push(sustainNote);
 
@@ -1587,7 +1607,7 @@ class PlayState extends MusicBeatState
 		var isVSliceMode:Bool = (MobileData.mode == 4);
 		var strumLineX:Float = ClientPrefs.data.middleScroll ? STRUM_X_MIDDLESCROLL : STRUM_X;
 		var strumLineY:Float = ClientPrefs.data.downScroll ? (FlxG.height - 150) : 50;
-		var vslicePlayerX:Array<Float> = [156, 382, 762, 988];
+		var vslicePlayerX:Array<Float> = [224, 418, 718, 912];
 
 		for (i in 0...4)
 		{
@@ -1613,20 +1633,20 @@ class PlayState extends MusicBeatState
 			{
 				if (player == 1)
 				{
-					var plrScale:Float = PlayState.isPixelStage ? (PlayState.daPixelZoom * 1.24) : 0.87;
+					var plrScale:Float = PlayState.isPixelStage ? (PlayState.daPixelZoom * 1.1) : 0.77;
 					babyArrow.scale.set(plrScale, plrScale);
 					babyArrow.updateHitbox();
 					babyArrow.x = vslicePlayerX[i % 4];
-					babyArrow.y = FlxG.height - 165;
+					babyArrow.y = FlxG.height - 184;
 					playerStrums.add(babyArrow);
 				}
 				else
 				{
-					var oppScale:Float = PlayState.isPixelStage ? (PlayState.daPixelZoom * 0.57) : 0.4;
+					var oppScale:Float = PlayState.isPixelStage ? (PlayState.daPixelZoom * 0.4) : 0.28;
 					babyArrow.scale.set(oppScale, oppScale);
 					babyArrow.updateHitbox();
-					babyArrow.x = 36 + (i * 64);
-					babyArrow.y = 35;
+					babyArrow.x = 48 + (i * 45);
+					babyArrow.y = 64;
 					opponentStrums.add(babyArrow);
 				}
 				strumLineNotes.add(babyArrow);

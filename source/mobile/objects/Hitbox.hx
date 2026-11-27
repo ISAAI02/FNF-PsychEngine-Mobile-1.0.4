@@ -72,8 +72,8 @@ class Hitbox extends MobileInputManager implements IMobileControls
 
 		if (isVSlice)
 		{
-			var vsliceX:Array<Float> = [156, 382, 762, 988];
-			var baseY:Float = FlxG.height - 165;
+			var vsliceX:Array<Float> = [224, 418, 718, 912];
+			var baseY:Float = FlxG.height - 184;
 
 			add(buttonLeft = createVSliceHint(vsliceX[0], baseY, 0, 0xFFC24B99));
 			add(buttonDown = createVSliceHint(vsliceX[1], baseY, 1, 0xFF00FFFF));
@@ -344,7 +344,7 @@ class Hitbox extends MobileInputManager implements IMobileControls
 					hint.animation.addByPrefix('static', 'arrowRIGHT');
 					hint.animation.addByPrefix('pressed', 'right press', 24, false);
 			}
-			hint.setGraphicSize(Std.int(hint.width * 0.87));
+			hint.setGraphicSize(Std.int(hint.width * 0.77));
 			hint.updateHitbox();
 			hint.animation.play('static', true);
 			hint.alpha = ClientPrefs.data.controlsAlpha;
@@ -366,7 +366,7 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		}
 		else
 		{
-			var hitW:Int = 226;
+			var hitW:Int = 194;
 			var hitH:Int = 360;
 			hint.makeGraphic(hitW, hitH, FlxColor.TRANSPARENT);
 			hint.alpha = 0.00001;

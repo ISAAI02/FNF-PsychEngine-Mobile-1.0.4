@@ -513,7 +513,12 @@ class Note extends FlxSprite
 
 		if (MobileData.mode == 4 && !inEditor)
 		{
-			if (!isSustainNote)
+			if (!mustPress)
+			{
+				visible = false;
+				alpha = 0;
+			}
+			else if (!isSustainNote)
 			{
 				if (scale.x != myStrum.scale.x || scale.y != myStrum.scale.y)
 				{
