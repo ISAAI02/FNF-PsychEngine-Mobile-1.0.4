@@ -1,0 +1,4 @@
+Changes the active Mobile Control Pad mid-song or at song start.
+
+Value 1: Control Mode (Number 0-4 or Case-Insensitive Name:
+0 / Pad-Right, 1 / Pad-Left, 2 / Pad-Custom, 3 / Hitbox, 4 / V-Slice)

@@ -41,7 +41,27 @@ class MobileFunctions
 		var lua:State = funk.lua;
 		Lua_helper.add_callback(lua, 'mobileC', Controls.instance.mobileC);
 
-		Lua_helper.add_callback(lua, 'mobileControlsMode', getMobileControlsAsString());
+		Lua_helper.add_callback(lua, 'mobileControlsMode', () -> getMobileControlsAsString());
+		Lua_helper.add_callback(lua, 'getMobileControlsMode', () -> getMobileControlsAsString());
+		Lua_helper.add_callback(lua, 'getMobileControlsID', () -> MobileData.mode);
+
+		var switchPadCallback = function(mode:Dynamic):Bool
+		{
+			if (PlayState.instance != null)
+				return PlayState.instance.setMobileControlsMode(mode);
+
+			var parsed:Int = MobileData.parseMode(mode);
+			if (parsed < 0)
+			{
+				FunkinLua.luaTrace('setMobileControlsMode: Invalid mode "$mode"', false, false, FlxColor.RED);
+				return false;
+			}
+			MobileData.forcedMode = parsed;
+			return true;
+		};
+		Lua_helper.add_callback(lua, 'setMobileControlsMode', switchPadCallback);
+		Lua_helper.add_callback(lua, 'changeMobileControls', switchPadCallback);
+		Lua_helper.add_callback(lua, 'setMobilePad', switchPadCallback);
 
 		Lua_helper.add_callback(lua, "extraButtonPressed", (button:String) ->
 		{
@@ -113,8 +133,28 @@ class MobileFunctions
 				return FunkinLua.luaTrace('vibrate: No duration specified.');
 			else if (period == null)
 				period = 0;
-			return Haptic.vibrate(period, duration);
+			if (HapticUtil.hapticsAvailable)
+				HapticUtil.vibrate(period / 1000.0, duration / 1000.0, 0.6, 0.5, false);
+			else
+				Haptic.vibrate(period, duration);
 		});
+
+		Lua_helper.add_callback(lua, "vibrateHaptics", (?duration:Null<Float>, ?amplitude:Null<Float>, ?period:Null<Float>, ?sharpness:Null<Float>) ->
+		{
+			var dur:Float = (duration != null) ? duration : 0.1;
+			var amp:Float = (amplitude != null) ? amplitude : 0.5;
+			var per:Float = (period != null) ? period : 0.0;
+			var shp:Float = (sharpness != null) ? sharpness : 0.5;
+			HapticUtil.vibrate(per, dur, amp, shp, false);
+		});
+
+		Lua_helper.add_callback(lua, "setHapticsIntensity", (?intensity:Null<Float>) ->
+		{
+			if (intensity != null)
+				ClientPrefs.data.hapticsIntensity = FlxMath.bound(intensity, 0.0, 1.0);
+		});
+
+		Lua_helper.add_callback(lua, "getHapticsIntensity", () -> ClientPrefs.data.hapticsIntensity);
 
 		Lua_helper.add_callback(lua, "addTouchPad", (DPadMode:String, ActionMode:String, ?addToCustomSubstate:Bool = false, ?posAtCustomSubstate:Int = -1) ->
 		{
@@ -306,19 +346,7 @@ class MobileFunctions
 
 	public static function getMobileControlsAsString():String
 	{
-		switch (MobileData.mode)
-		{
-			case 0:
-				return 'left';
-			case 1:
-				return 'right';
-			case 2:
-				return 'custom';
-			case 3:
-				return 'hitbox';
-			default:
-				return 'none';
-		}
+		return MobileData.modeToString(MobileData.mode);
 	}
 }
 

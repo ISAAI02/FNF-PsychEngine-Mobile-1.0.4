@@ -19,6 +19,8 @@ import states.TitleState;
 	public var popUpRating:Bool = true;
 	public var vsync:Bool = false;
 	public var gameOverVibration:Bool = false;
+	public var hapticsMode:String = "All";
+	public var hapticsIntensity:Float = 1.0;
 	public var fpsRework:Bool = false;
 	
 	public var downScroll:Bool = false;

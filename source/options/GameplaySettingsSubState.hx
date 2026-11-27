@@ -58,6 +58,26 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 		addOption(option);
 		option.onChange = onChangeVibration;
 
+		var option:Option = new Option('Haptics Mode',
+			'Select which FNF Mobile haptic feedback effects are enabled (All, Notes Only, or None).',
+			'hapticsMode',
+			STRING,
+			['All', 'Notes Only', 'None']);
+		option.onChange = () -> HapticUtil.vibrate(0.0, 0.04, 0.6, 0.8, true);
+		addOption(option);
+
+		var option:Option = new Option('Haptics Intensity',
+			'Adjusts the intensity of haptic feedback effects (from 0.0 to 1.0).',
+			'hapticsIntensity',
+			FLOAT);
+		option.scrollSpeed = 0.8;
+		option.minValue = 0.0;
+		option.maxValue = 1.0;
+		option.changeValue = 0.1;
+		option.decimals = 1;
+		option.onChange = () -> HapticUtil.vibrate(0.0, 0.04, 0.7, 0.8, true);
+		addOption(option);
+
 		var option:Option = new Option('Sustains as One Note',
 			"If checked, Hold Notes can't be pressed if you miss,\nand count as a single Hit/Miss.\nUncheck this if you prefer the old Input System.",
 			'guitarHeroSustains',

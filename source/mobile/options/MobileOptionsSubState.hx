@@ -31,6 +31,7 @@ class MobileOptionsSubState extends BaseOptionsMenu
 {
 	final exControlTypes:Array<String> = ["NONE", "SINGLE", "DOUBLE"];
 	final hintOptions:Array<String> = ["No Gradient", "No Gradient (Old)", "Gradient", "Hitbox Line", "Hidden"];
+	final hapticsModes:Array<String> = ["All", "Notes Only", "None"];
 	var option:Option;
 
 	public function new()
@@ -82,6 +83,23 @@ class MobileOptionsSubState extends BaseOptionsMenu
 		option = new Option('Dynamic Controls Color',
 			'If checked, the mobile controls color will be set to the notes color in your settings.\n(have effect during gameplay only)', 'dynamicColors',
 			BOOL);
+		addOption(option);
+
+		option = new Option('Haptics Mode',
+			'Select which FNF Mobile haptic feedback effects are enabled (All, Notes Only, or None).',
+			'hapticsMode', STRING, hapticsModes);
+		option.onChange = () -> HapticUtil.vibrate(0.0, 0.04, 0.6, 0.8, true);
+		addOption(option);
+
+		option = new Option('Haptics Intensity',
+			'Adjusts the intensity of haptic feedback effects (from 0.0 to 1.0).',
+			'hapticsIntensity', FLOAT);
+		option.scrollSpeed = 0.8;
+		option.minValue = 0.0;
+		option.maxValue = 1.0;
+		option.changeValue = 0.1;
+		option.decimals = 1;
+		option.onChange = () -> HapticUtil.vibrate(0.0, 0.04, 0.7, 0.8, true);
 		addOption(option);
 
 		super();

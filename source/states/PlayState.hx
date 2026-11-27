@@ -79,6 +79,7 @@ class PlayState extends MusicBeatState
 
 	var _vsliceSavedDownScroll:Null<Bool> = null;
 	var _vsliceSavedMiddleScroll:Null<Bool> = null;
+	var _holdingSustainThisFrame:Bool = false;
 
 	public static var ratingStuff:Array<Dynamic> = [
 		['You Suck!', 0.2], //From 0% to 19%
@@ -299,11 +300,12 @@ class PlayState extends MusicBeatState
 
 		PauseSubState.songName = null; //Reset to default
 		playbackRate = ClientPrefs.getGameplaySetting('songspeed');
+		HapticUtil.resetNoteHits();
 
+		_vsliceSavedDownScroll = ClientPrefs.data.downScroll;
+		_vsliceSavedMiddleScroll = ClientPrefs.data.middleScroll;
 		if (MobileData.mode == 4)
 		{
-			_vsliceSavedDownScroll = ClientPrefs.data.downScroll;
-			_vsliceSavedMiddleScroll = ClientPrefs.data.middleScroll;
 			ClientPrefs.data.downScroll = true;
 			ClientPrefs.data.middleScroll = true;
 		}
@@ -1068,18 +1070,22 @@ class PlayState extends MusicBeatState
 				{
 					case 0:
 						FlxG.sound.play(Paths.sound('intro3' + introSoundsSuffix), 0.6);
+						HapticUtil.vibrateCountdown(false);
 						tick = THREE;
 					case 1:
 						countdownReady = createCountdownSprite(introAlts[0], antialias);
 						FlxG.sound.play(Paths.sound('intro2' + introSoundsSuffix), 0.6);
+						HapticUtil.vibrateCountdown(false);
 						tick = TWO;
 					case 2:
 						countdownSet = createCountdownSprite(introAlts[1], antialias);
 						FlxG.sound.play(Paths.sound('intro1' + introSoundsSuffix), 0.6);
+						HapticUtil.vibrateCountdown(false);
 						tick = ONE;
 					case 3:
 						countdownGo = createCountdownSprite(introAlts[2], antialias);
 						FlxG.sound.play(Paths.sound('introGo' + introSoundsSuffix), 0.6);
+						HapticUtil.vibrateCountdown(true);
 						tick = GO;
 					case 4:
 						tick = START;
@@ -1966,6 +1972,13 @@ class PlayState extends MusicBeatState
 						});
 					}
 				}
+				if (!paused && !cpuControlled)
+					HapticUtil.flushNoteHits(elapsed, _holdingSustainThisFrame);
+				_holdingSustainThisFrame = false;
+			}
+			else
+			{
+				_holdingSustainThisFrame = false;
 			}
 			checkEventNote();
 		}
@@ -2416,6 +2429,9 @@ class PlayState extends MusicBeatState
 			case 'Play Sound':
 				if(flValue2 == null) flValue2 = 1;
 				FlxG.sound.play(Paths.sound(value1), flValue2);
+
+			case 'Change Mobile Controls' | 'Set Mobile Pad':
+				setMobileControlsMode(value1);
 		}
 
 		stagesFunc(function(stage:BaseStage) stage.eventCalled(eventName, value1, value2, flValue1, flValue2, strumTime));
@@ -3092,6 +3108,9 @@ class PlayState extends MusicBeatState
 		var lastCombo:Int = combo;
 		combo = 0;
 
+		if (!cpuControlled)
+			HapticUtil.vibrateMiss();
+
 		health -= subtract * healthLoss;
 		songScore -= 10;
 		if(!endingSong) songMisses++;
@@ -3235,9 +3254,15 @@ class PlayState extends MusicBeatState
 
 			if (!note.isSustainNote)
 			{
+				if (!cpuControlled)
+					HapticUtil.registerNoteHit();
 				combo++;
 				if(combo > 9999) combo = 9999;
 				popUpScore(note);
+			}
+			else if (!cpuControlled)
+			{
+				_holdingSustainThisFrame = true;
 			}
 			var gainHealth:Bool = true; // prevent health gain, *if* sustains are treated as a singular note
 			if (guitarHeroSustains && note.isSustainNote) gainHealth = false;
@@ -3293,6 +3318,8 @@ class PlayState extends MusicBeatState
 	}
 
 	override function destroy() {
+		HapticUtil.resetNoteHits();
+		MobileData.forcedMode = null;
 		if (_vsliceSavedDownScroll != null)
 		{
 			ClientPrefs.data.downScroll = _vsliceSavedDownScroll;
@@ -3803,6 +3830,241 @@ class PlayState extends MusicBeatState
 		FlxG.log.warn('This platform doesn\'t support Runtime Shaders!');
 		#end
 		return false;
+	}
+
+	private function refreshNoteForControlMode(daNote:Note, isVSliceMode:Bool):Void
+	{
+		if (daNote == null)
+			return;
+
+		var normalScale:Float = PlayState.isPixelStage ? PlayState.daPixelZoom : 0.7;
+		var vslicePlrScale:Float = PlayState.isPixelStage ? (PlayState.daPixelZoom * 1.1) : 0.77;
+		var noteDownScroll:Bool = (isVSliceMode && !daNote.mustPress) ? false : ClientPrefs.data.downScroll;
+
+		if (!daNote.mustPress)
+		{
+			if (isVSliceMode)
+			{
+				daNote.visible = false;
+				daNote.multAlpha = 0;
+				daNote.copyAlpha = false;
+				daNote.alpha = 0;
+			}
+			else
+			{
+				daNote.visible = ClientPrefs.data.opponentStrums;
+				daNote.multAlpha = daNote.isSustainNote ? 0.6 : 1.0;
+				daNote.copyAlpha = true;
+				var oppBaseAlpha:Float = !ClientPrefs.data.opponentStrums ? 0.0 : (ClientPrefs.data.middleScroll ? 0.35 : 1.0);
+				daNote.alpha = oppBaseAlpha * daNote.multAlpha;
+			}
+		}
+
+		if (!daNote.isSustainNote)
+		{
+			if (daNote.mustPress)
+			{
+				var targetScale:Float = isVSliceMode ? vslicePlrScale : normalScale;
+				if (daNote.scale.x != targetScale || daNote.scale.y != targetScale)
+				{
+					daNote.scale.set(targetScale, targetScale);
+					daNote.updateHitbox();
+					daNote.centerOffsets();
+					daNote.centerOrigin();
+				}
+			}
+		}
+		else
+		{
+			daNote.flipY = noteDownScroll;
+			if (daNote.mustPress)
+			{
+				var targetScaleX:Float = isVSliceMode ? vslicePlrScale : normalScale;
+				daNote.scale.x = targetScaleX;
+				if (daNote.animation.curAnim != null && daNote.animation.curAnim.name.endsWith('end') && !PlayState.isPixelStage)
+					daNote.scale.y = targetScaleX;
+				daNote.updateHitbox();
+				if (playerStrums != null && playerStrums.length > daNote.noteData && playerStrums.members[daNote.noteData] != null)
+					daNote.offsetX = (playerStrums.members[daNote.noteData].width - daNote.width) * 0.5;
+				else
+				{
+					var expectedStrumW:Float = PlayState.isPixelStage ? (17.0 * targetScaleX) : (157.0 * targetScaleX);
+					daNote.offsetX = (expectedStrumW - daNote.width) * 0.5;
+				}
+			}
+			if (!PlayState.isPixelStage)
+			{
+				var parentH:Float = (daNote.parent != null) ? daNote.parent.height : daNote.height;
+				daNote.correctionOffset = noteDownScroll ? 0.0 : (parentH / 2.0);
+			}
+		}
+	}
+
+	public function setMobileControlsMode(modeInput:Dynamic):Bool
+	{
+		var newMode:Int = MobileData.parseMode(modeInput);
+		if (newMode < 0)
+		{
+			#if (LUA_ALLOWED || HSCRIPT_ALLOWED)
+			addTextToDebug('setMobileControlsMode: Invalid mode "$modeInput" (use 0-4 or Pad-Right, Pad-Left, Pad-Custom, Hitbox, V-Slice)', FlxColor.RED);
+			#end
+			return false;
+		}
+
+		if (_vsliceSavedDownScroll == null)
+			_vsliceSavedDownScroll = ClientPrefs.data.downScroll;
+		if (_vsliceSavedMiddleScroll == null)
+			_vsliceSavedMiddleScroll = ClientPrefs.data.middleScroll;
+
+		MobileData.forcedMode = newMode;
+		var isVSliceMode:Bool = (newMode == 4);
+
+		if (isVSliceMode)
+		{
+			ClientPrefs.data.downScroll = true;
+			ClientPrefs.data.middleScroll = true;
+		}
+		else
+		{
+			ClientPrefs.data.downScroll = (_vsliceSavedDownScroll == true);
+			ClientPrefs.data.middleScroll = (_vsliceSavedMiddleScroll == true);
+		}
+
+		setOnScripts('downscroll', ClientPrefs.data.downScroll);
+		setOnScripts('middlescroll', ClientPrefs.data.middleScroll);
+
+		if (!cpuControlled && playerStrums != null)
+		{
+			for (strum in playerStrums.members)
+			{
+				if (strum != null && strum.animation.curAnim != null && strum.animation.curAnim.name == 'pressed')
+				{
+					strum.playAnim('static');
+					strum.resetAnim = 0;
+				}
+			}
+		}
+
+		if (mobileControls != null)
+		{
+			removeMobileControls();
+			addMobileControls();
+			mobileControls.instance.visible = !inCutscene && !endingSong;
+			mobileControls.onButtonDown.add(onButtonPress);
+			mobileControls.onButtonUp.add(onButtonRelease);
+		}
+
+		// Update HUD positions for Downscroll/Upscroll transition
+		if (timeTxt != null)
+		{
+			timeTxt.y = ClientPrefs.data.downScroll ? (FlxG.height - 44) : 19;
+			if (ClientPrefs.data.timeBarType == 'Song Name')
+				timeTxt.y += 3;
+		}
+		if (timeBar != null && timeTxt != null)
+			timeBar.y = timeTxt.y + (timeTxt.height / 4);
+
+		if (healthBar != null)
+		{
+			healthBar.y = FlxG.height * (!ClientPrefs.data.downScroll ? 0.89 : 0.11);
+			if (iconP1 != null)
+				iconP1.y = healthBar.y - 75;
+			if (iconP2 != null)
+				iconP2.y = healthBar.y - 75;
+			if (scoreTxt != null)
+				scoreTxt.y = healthBar.y + 40;
+			if (botplayTxt != null)
+				botplayTxt.y = healthBar.y + (ClientPrefs.data.downScroll ? 70 : -90);
+		}
+
+		// Update StrumLines if already spawned
+		var normalScale:Float = PlayState.isPixelStage ? PlayState.daPixelZoom : 0.7;
+		var vslicePlrScale:Float = PlayState.isPixelStage ? (PlayState.daPixelZoom * 1.1) : 0.77;
+		var vsliceOppScale:Float = PlayState.isPixelStage ? (PlayState.daPixelZoom * 0.4) : 0.28;
+		var strumLineX:Float = ClientPrefs.data.middleScroll ? STRUM_X_MIDDLESCROLL : STRUM_X;
+		var strumLineY:Float = ClientPrefs.data.downScroll ? (FlxG.height - 150) : 50;
+		var vslicePlayerX:Array<Float> = [224, 418, 718, 912];
+
+		if (playerStrums != null && playerStrums.length > 0)
+		{
+			for (i in 0...playerStrums.length)
+			{
+				var strum:StrumNote = playerStrums.members[i];
+				if (strum == null)
+					continue;
+
+				strum.downScroll = ClientPrefs.data.downScroll;
+				if (isVSliceMode)
+				{
+					strum.scale.set(vslicePlrScale, vslicePlrScale);
+					strum.updateHitbox();
+					strum.x = vslicePlayerX[i % 4];
+					strum.y = FlxG.height - 184;
+				}
+				else
+				{
+					strum.scale.set(normalScale, normalScale);
+					strum.updateHitbox();
+					strum.x = strumLineX;
+					strum.y = strumLineY;
+					strum.playerPosition();
+				}
+				strum.playAnim(strum.animation.curAnim != null ? strum.animation.curAnim.name : 'static', true);
+				setOnScripts('defaultPlayerStrumX' + i, strum.x);
+				setOnScripts('defaultPlayerStrumY' + i, strum.y);
+			}
+		}
+
+		if (opponentStrums != null && opponentStrums.length > 0)
+		{
+			for (i in 0...opponentStrums.length)
+			{
+				var strum:StrumNote = opponentStrums.members[i];
+				if (strum == null)
+					continue;
+
+				var targetAlpha:Float = !ClientPrefs.data.opponentStrums ? 0.0 : ((ClientPrefs.data.middleScroll && !isVSliceMode) ? 0.35 : 1.0);
+				strum.downScroll = isVSliceMode ? false : ClientPrefs.data.downScroll;
+				strum.alpha = targetAlpha;
+				if (isVSliceMode)
+				{
+					strum.scale.set(vsliceOppScale, vsliceOppScale);
+					strum.updateHitbox();
+					strum.x = 48 + (i * 45);
+					strum.y = 64;
+				}
+				else
+				{
+					strum.scale.set(normalScale, normalScale);
+					strum.updateHitbox();
+					strum.x = strumLineX;
+					strum.y = strumLineY;
+					if (ClientPrefs.data.middleScroll)
+					{
+						strum.x += 310;
+						if (i > 1)
+							strum.x += FlxG.width / 2 + 20;
+					}
+					strum.playerPosition();
+				}
+				strum.playAnim(strum.animation.curAnim != null ? strum.animation.curAnim.name : 'static', true);
+				setOnScripts('defaultOpponentStrumX' + i, strum.x);
+				setOnScripts('defaultOpponentStrumY' + i, strum.y);
+			}
+		}
+
+		if (notes != null)
+		{
+			for (daNote in notes.members)
+				refreshNoteForControlMode(daNote, isVSliceMode);
+		}
+		if (unspawnNotes != null)
+		{
+			for (daNote in unspawnNotes)
+				refreshNoteForControlMode(daNote, isVSliceMode);
+		}
+
+		return true;
 	}
 
 	public function makeLuaTouchPad(DPadMode:String, ActionMode:String) {

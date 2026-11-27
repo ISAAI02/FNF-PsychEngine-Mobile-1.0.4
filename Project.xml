@@ -27,6 +27,7 @@
 	<define name="DISCORD_ALLOWED" if="desktop" />
 	<define name="TRANSLATIONS_ALLOWED" />
 	<define name="COPYSTATE_ALLOWED" if="MODS_ALLOWED mobile"/>
+	<define name="FEATURE_HAPTICS" if="mobile"/>
 	<define name="IRIS_DEBUG"/>
 	
 	<define name="MULTITHREADED_LOADING" if="cpp" /> <!-- UNCOMMENTING THIS LINE WILL ENABLE MULTITHREADED LOADING, WHICH IMPROVES LOADING TIMES, BUT WITH A LOW CHANCE FOR THE GAME FREEZE ON SONG LOAD -->
@@ -122,6 +123,7 @@
 	<haxelib name="hscript-iris" if="HSCRIPT_ALLOWED"/>
 	<haxelib name="hxvlc" if="VIDEOS_ALLOWED"/>
 	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED"/>
+	<haxelib name="extension-haptics" if="FEATURE_HAPTICS"/>
 	<haxelib name="flxanimate"/>
 
 	<!-- Disable Discord IO Thread -->
@@ -186,6 +188,7 @@
 	<certificate path="key.keystore" password="psychengine" alias="psychport" alias-password="psychengine" if="android" unless="debug" />
 
 	<!-- Category Type for Apple Systems -->
+	<android permission="android.permission.VIBRATE" if="android" />
 	<config:ios category_type="public.app-category.music-games" />
 	<config:mac category_type="public.app-category.music-games" />
 

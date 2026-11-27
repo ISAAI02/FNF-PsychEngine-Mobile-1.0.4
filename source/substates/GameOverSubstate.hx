@@ -60,7 +60,9 @@ class GameOverSubstate extends MusicBeatSubstate
 	{
 		instance = this;
 
-		if (ClientPrefs.data.gameOverVibration)
+		if (HapticUtil.hapticsAvailable && (ClientPrefs.data.hapticsMode == 'All' || ClientPrefs.data.gameOverVibration))
+			HapticUtil.vibrateGameOver();
+		else if (ClientPrefs.data.gameOverVibration)
 			Haptic.vibrate(0, 500);
 
 		Conductor.songPosition = 0;

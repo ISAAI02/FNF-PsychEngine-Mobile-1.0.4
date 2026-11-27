@@ -162,6 +162,8 @@ class HScript extends Iris
 		set('PlayState', PlayState);
 		set('Paths', Paths);
 		set('StorageUtil', StorageUtil);
+		set('MobileData', MobileData);
+		set('HapticUtil', HapticUtil);
 		set('Conductor', Conductor);
 		set('ClientPrefs', ClientPrefs);
 		#if ACHIEVEMENTS_ALLOWED
@@ -379,6 +381,33 @@ class HScript extends Iris
 		set('this', this);
 		set('game', FlxG.state);
 		set('controls', Controls.instance);
+
+		var hscriptSwitchPad = function(mode:Dynamic):Bool {
+			if (PlayState.instance != null)
+				return PlayState.instance.setMobileControlsMode(mode);
+			var parsed:Int = MobileData.parseMode(mode);
+			if (parsed < 0)
+				return false;
+			MobileData.forcedMode = parsed;
+			return true;
+		};
+		set('setMobileControlsMode', hscriptSwitchPad);
+		set('changeMobileControls', hscriptSwitchPad);
+		set('setMobilePad', hscriptSwitchPad);
+		set('getMobileControlsMode', () -> MobileData.modeToString(MobileData.mode));
+		set('getMobileControlsID', () -> MobileData.mode);
+		set('vibrateHaptics', function(?duration:Null<Float>, ?amplitude:Null<Float>, ?period:Null<Float>, ?sharpness:Null<Float>) {
+			var dur:Float = (duration != null) ? duration : 0.1;
+			var amp:Float = (amplitude != null) ? amplitude : 0.5;
+			var per:Float = (period != null) ? period : 0.0;
+			var shp:Float = (sharpness != null) ? sharpness : 0.5;
+			HapticUtil.vibrate(per, dur, amp, shp, false);
+		});
+		set('setHapticsIntensity', function(?intensity:Null<Float>) {
+			if (intensity != null)
+				ClientPrefs.data.hapticsIntensity = FlxMath.bound(intensity, 0.0, 1.0);
+		});
+		set('getHapticsIntensity', () -> ClientPrefs.data.hapticsIntensity);
 
 		set('buildTarget', LuaUtils.getBuildTarget());
 		set('customSubstate', CustomSubstate.instance);

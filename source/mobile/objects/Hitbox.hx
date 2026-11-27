@@ -326,6 +326,9 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		hint.labelStatusDiff = 0.00001;
 		hint.canChangeLabelAlpha = false;
 
+		var hitW:Int = 284;
+		var hitH:Int = 360;
+
 		if (!inPlayState)
 		{
 			hint.frames = Paths.getSparrowAtlas('NOTE_assets');
@@ -346,7 +349,15 @@ class Hitbox extends MobileInputManager implements IMobileControls
 			}
 			hint.setGraphicSize(Std.int(hint.width * 0.77));
 			hint.updateHitbox();
+			var visW:Float = hint.width;
+			var visH:Float = hint.height;
+			hint.width = hitW;
+			hint.height = hitH;
+			hint.x = X + (visW - hitW) * 0.5;
+			hint.y = Y - (hitH - visH) * 0.5;
 			hint.animation.play('static', true);
+			hint.centerOffsets();
+			hint.centerOrigin();
 			hint.alpha = ClientPrefs.data.controlsAlpha;
 
 			hint.onDown.callback = function()
@@ -366,9 +377,9 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		}
 		else
 		{
-			var hitW:Int = 194;
-			var hitH:Int = 360;
 			hint.makeGraphic(hitW, hitH, FlxColor.TRANSPARENT);
+			hint.x = X + (121.0 - hitW) * 0.5;
+			hint.y = Y - (hitH - 118.6) * 0.5;
 			hint.alpha = 0.00001;
 			hint.onDown.callback = () -> onButtonDown.dispatch(hint);
 			hint.onOut.callback = hint.onUp.callback = () -> onButtonUp.dispatch(hint);
@@ -384,6 +395,31 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		return hint;
 	}
 
+	private function alignVSlicePair(btnA:TouchButton, btnB:TouchButton, strumA:FlxSprite, strumB:FlxSprite):Void
+	{
+		if (strumA == null || strumB == null || btnA == null || btnB == null)
+			return;
+
+		var gapLeft:Float = Math.min(strumA.x + strumA.width, strumB.x + strumB.width);
+		var gapRight:Float = Math.max(strumA.x, strumB.x);
+		var pairMidX:Float = (gapLeft + gapRight) * 0.5;
+		var dualHalf:Float = Math.max(45.0, Math.abs(gapRight - gapLeft) * 0.5 + 8.0);
+
+		if (strumA.x <= strumB.x)
+		{
+			btnA.x = (pairMidX + dualHalf) - btnA.width;
+			btnB.x = pairMidX - dualHalf;
+		}
+		else
+		{
+			btnB.x = (pairMidX + dualHalf) - btnB.width;
+			btnA.x = pairMidX - dualHalf;
+		}
+
+		btnA.y = strumA.y - (btnA.height - strumA.height) * 0.5;
+		btnB.y = strumB.y - (btnB.height - strumB.height) * 0.5;
+	}
+
 	override public function update(elapsed:Float):Void
 	{
 		super.update(elapsed);
@@ -391,17 +427,8 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		if (isVSlice && PlayState.instance != null && FlxG.state == PlayState.instance && PlayState.instance.playerStrums != null
 			&& PlayState.instance.playerStrums.length >= 4)
 		{
-			var btns:Array<TouchButton> = [buttonLeft, buttonDown, buttonUp, buttonRight];
-			for (i in 0...4)
-			{
-				var strum = PlayState.instance.playerStrums.members[i];
-				var btn = btns[i];
-				if (strum != null && btn != null)
-				{
-					btn.x = strum.x + (strum.width - btn.width) * 0.5;
-					btn.y = strum.y - (btn.height - strum.height) * 0.5;
-				}
-			}
+			alignVSlicePair(buttonLeft, buttonDown, PlayState.instance.playerStrums.members[0], PlayState.instance.playerStrums.members[1]);
+			alignVSlicePair(buttonUp, buttonRight, PlayState.instance.playerStrums.members[2], PlayState.instance.playerStrums.members[3]);
 		}
 	}
 }

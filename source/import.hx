@@ -22,6 +22,7 @@ import mobile.objects.TouchPad;
 import mobile.objects.TouchButton;
 import mobile.input.MobileInputID;
 import mobile.backend.MobileData;
+import mobile.backend.HapticUtil;
 import mobile.input.MobileInputManager;
 import mobile.backend.TouchUtil;
 

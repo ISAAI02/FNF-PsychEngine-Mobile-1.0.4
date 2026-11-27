@@ -38,6 +38,7 @@ class MobileData
 	public static var dpadModes:Map<String, TouchButtonsData> = new Map();
 	public static var extraActions:Map<String, ExtraActions> = new Map();
 
+	public static inline var MAX_MODE:Int = 4;
 	public static var mode(get, set):Int;
 	public static var forcedMode:Null<Int>;
 	public static var save:FlxSave;
@@ -184,6 +185,63 @@ class MobileData
 			}
 		}
 		#end
+	}
+
+	public static function parseMode(input:Dynamic):Int
+	{
+		if (input == null)
+			return -1;
+
+		if (Std.isOfType(input, Int) || Std.isOfType(input, Float))
+		{
+			var num:Int = Std.int(input);
+			return (num >= 0 && num <= MAX_MODE) ? num : -1;
+		}
+
+		if (Std.isOfType(input, String))
+		{
+			var raw:String = (cast input : String).trim().toLowerCase();
+			if (raw.length == 0)
+				return -1;
+
+			var parsedInt:Null<Int> = Std.parseInt(raw);
+			if (parsedInt != null && Std.string(parsedInt) == raw)
+				return (parsedInt >= 0 && parsedInt <= MAX_MODE) ? parsedInt : -1;
+
+			var normalized:String = raw.replace('_', '-').replace(' ', '-');
+			while (normalized.contains('--'))
+				normalized = normalized.replace('--', '-');
+
+			switch (normalized)
+			{
+				case 'pad-right' | 'right' | 'right-full' | 'dpad-right':
+					return 0;
+				case 'pad-left' | 'left' | 'left-full' | 'dpad-left':
+					return 1;
+				case 'pad-custom' | 'custom' | 'dpad-custom':
+					return 2;
+				case 'hitbox' | 'hit-box':
+					return 3;
+				case 'v-slice' | 'vslice' | 'v-siled' | 'vsiled' | 'v-slied' | 'vslied' | 'fnf-mobile' | 'arrows':
+					return 4;
+			}
+		}
+
+		return -1;
+	}
+
+	public static function modeToString(?modeValue:Null<Int>):String
+	{
+		var m:Int = (modeValue != null) ? modeValue : mode;
+		return switch (m)
+		{
+			case 0: 'pad-right';
+			case 1: 'pad-left';
+			case 2: 'pad-custom';
+			case 3: 'hitbox';
+			case 4: 'v-slice';
+			default: 'none';
+		};
 	}
 
 	static function set_mode(mode:Int = 3)

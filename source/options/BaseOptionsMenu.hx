@@ -249,7 +249,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 									case INT:
 										curOption.setValue(Math.round(holdValue));
 									
-									case PERCENT:
+									case PERCENT, FLOAT:
 										curOption.setValue(FlxMath.roundDecimal(holdValue, curOption.decimals));
 
 									default:
@@ -505,6 +505,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 
 		curOption = optionsArray[curSelected]; //shorter lol
 		FlxG.sound.play(Paths.sound('scrollMenu'));
+		if (change != 0) HapticUtil.vibrateMenuTick();
 	}
 
 	function reloadCheckboxes()
