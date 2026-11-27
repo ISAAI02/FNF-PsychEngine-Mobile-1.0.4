@@ -288,7 +288,7 @@ class NoteSplash extends FlxSprite
 		else if (PlayState.isPixelStage) rgbShader.pixelAmount = 6;
 
 		var conf:NoteSplashAnim = config.animations.get(anim);
-		var baseScale:Float = (config != null && config.scale != null) ? config.scale : 1.0;
+		var baseScale:Float = (config != null && !Math.isNaN(config.scale) && config.scale > 0) ? config.scale : 1.0;
 		if (inEditor)
 		{
 			scale.set(baseScale, baseScale);
