@@ -511,6 +511,33 @@ class Note extends FlxSprite
 		var strumAlpha:Float = myStrum.alpha;
 		var strumDirection:Float = myStrum.direction;
 
+		if (MobileData.mode == 4 && !inEditor)
+		{
+			if (!isSustainNote)
+			{
+				if (scale.x != myStrum.scale.x || scale.y != myStrum.scale.y)
+				{
+					scale.set(myStrum.scale.x, myStrum.scale.y);
+					updateHitbox();
+					centerOffsets();
+					centerOrigin();
+				}
+			}
+			else
+			{
+				if (scale.x != myStrum.scale.x)
+				{
+					scale.x = myStrum.scale.x;
+					if (animation.curAnim != null && animation.curAnim.name.endsWith('end'))
+						scale.y = myStrum.scale.y;
+					updateHitbox();
+					offsetX = (myStrum.width - width) * 0.5;
+					if (!myStrum.downScroll && !PlayState.isPixelStage)
+						correctionOffset = myStrum.height / 2;
+				}
+			}
+		}
+
 		distance = (0.45 * (Conductor.songPosition - strumTime) * songSpeed * multSpeed);
 		if (!myStrum.downScroll) distance *= -1;
 
@@ -533,14 +560,14 @@ class Note extends FlxSprite
 				{
 					y -= PlayState.daPixelZoom * 9.5;
 				}
-				y -= (frameHeight * scale.y) - (Note.swagWidth / 2);
+				y -= (frameHeight * scale.y) - (myStrum.height / 2);
 			}
 		}
 	}
 
 	public function clipToStrumNote(myStrum:StrumNote)
 	{
-		var center:Float = myStrum.y + offsetY + Note.swagWidth / 2;
+		var center:Float = myStrum.y + offsetY + myStrum.height / 2;
 		if((mustPress || !ignoreNote) && (wasGoodHit || (prevNote.wasGoodHit && !canBeHit)))
 		{
 			var swagRect:FlxRect = clipRect;

@@ -72,14 +72,13 @@ class Hitbox extends MobileInputManager implements IMobileControls
 
 		if (isVSlice)
 		{
-			var baseX:Float = (FlxG.width / 2) + PlayState.STRUM_X_MIDDLESCROLL + 50;
-			var baseY:Float = FlxG.height - 150;
-			var stepX:Float = Note.swagWidth;
+			var vsliceX:Array<Float> = [156, 382, 762, 988];
+			var baseY:Float = FlxG.height - 165;
 
-			add(buttonLeft = createVSliceHint(baseX, baseY, 0, 0xFFC24B99));
-			add(buttonDown = createVSliceHint(baseX + stepX, baseY, 1, 0xFF00FFFF));
-			add(buttonUp = createVSliceHint(baseX + stepX * 2, baseY, 2, 0xFF12FA05));
-			add(buttonRight = createVSliceHint(baseX + stepX * 3, baseY, 3, 0xFFF9393F));
+			add(buttonLeft = createVSliceHint(vsliceX[0], baseY, 0, 0xFFC24B99));
+			add(buttonDown = createVSliceHint(vsliceX[1], baseY, 1, 0xFF00FFFF));
+			add(buttonUp = createVSliceHint(vsliceX[2], baseY, 2, 0xFF12FA05));
+			add(buttonRight = createVSliceHint(vsliceX[3], baseY, 3, 0xFFF9393F));
 
 			switch (extraMode)
 			{
@@ -345,7 +344,7 @@ class Hitbox extends MobileInputManager implements IMobileControls
 					hint.animation.addByPrefix('static', 'arrowRIGHT');
 					hint.animation.addByPrefix('pressed', 'right press', 24, false);
 			}
-			hint.setGraphicSize(Std.int(hint.width * 0.7));
+			hint.setGraphicSize(Std.int(hint.width * 0.87));
 			hint.updateHitbox();
 			hint.animation.play('static', true);
 			hint.alpha = ClientPrefs.data.controlsAlpha;
@@ -367,7 +366,7 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		}
 		else
 		{
-			var hitW:Int = Std.int(Note.swagWidth * 1.15);
+			var hitW:Int = 226;
 			var hitH:Int = 360;
 			hint.makeGraphic(hitW, hitH, FlxColor.TRANSPARENT);
 			hint.alpha = 0.00001;

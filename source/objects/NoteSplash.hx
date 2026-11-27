@@ -207,8 +207,8 @@ class NoteSplash extends FlxSprite
 		if (!inEditor)
 		{
 			var loadedTexture:String = defaultNoteSplash + getSplashSkinPostfix();
-			if (note != null && note.noteSplashData.texture != null) loadedTexture = note.noteSplashData.texture;
-			else if (PlayState.SONG != null && PlayState.SONG.splashSkin != null && PlayState.SONG.splashSkin.length > 0) loadedTexture = PlayState.SONG.splashSkin;
+			if (note != null && note.noteSplashData.texture != null && note.noteSplashData.texture.trim().length > 0) loadedTexture = note.noteSplashData.texture;
+			else if (PlayState.SONG != null && PlayState.SONG.splashSkin != null && PlayState.SONG.splashSkin.trim().length > 0) loadedTexture = PlayState.SONG.splashSkin;
 
 			if (texture != loadedTexture && _lastRequestedSplash != loadedTexture)
 			{
@@ -288,8 +288,10 @@ class NoteSplash extends FlxSprite
 		else if (PlayState.isPixelStage) rgbShader.pixelAmount = 6;
 
 		var conf:NoteSplashAnim = config.animations.get(anim);
-		if (inEditor || config.hasCustomOffsets == true)
+		var baseScale:Float = (config != null && config.scale != null) ? config.scale : 1.0;
+		if (inEditor)
 		{
+			scale.set(baseScale, baseScale);
 			if (babyArrow != null)
 				setPosition(babyArrow.x - Note.swagWidth * 0.95, babyArrow.y - Note.swagWidth);
 
@@ -304,6 +306,15 @@ class NoteSplash extends FlxSprite
 		}
 		else
 		{
+			if (babyArrow != null && !PlayState.isPixelStage)
+			{
+				var arrowRatio:Float = babyArrow.width / Note.swagWidth;
+				scale.set(baseScale * arrowRatio, baseScale * arrowRatio);
+			}
+			else
+			{
+				scale.set(baseScale, baseScale);
+			}
 			updateHitbox();
 			centerOffsets();
 			centerOrigin();
@@ -386,7 +397,7 @@ class NoteSplash extends FlxSprite
 
 		if (babyArrow != null)
 		{
-			if (inEditor || (config != null && config.hasCustomOffsets == true))
+			if (inEditor)
 			{
 				if (copyX)
 					x = babyArrow.x - Note.swagWidth * 0.95;

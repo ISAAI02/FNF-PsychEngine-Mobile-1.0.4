@@ -121,6 +121,8 @@ class ModsMenuState extends MusicBeatState
 		add(buttonModFolder);*/
 
 		buttonEnableAll = new MenuButton(buttonX, myY, buttonWidth, buttonHeight, Language.getPhrase('enable_all_button', 'ENABLE ALL'), function() {
+			if (toggleAllCooldown) return;
+			toggleAllCooldown = true;
 			buttonEnableAll.ignoreCheck = false;
 			for (mod in modsGroup.members)
 			{
@@ -130,6 +132,7 @@ class ModsMenuState extends MusicBeatState
 					modsList.enabled.push(mod.folder);
 					mod.icon.color = FlxColor.WHITE;
 					mod.text.color = FlxColor.WHITE;
+					if (mod.mustRestart) waitingToRestart = true;
 				}
 			}
 			updateModDisplayData();
@@ -141,6 +144,8 @@ class ModsMenuState extends MusicBeatState
 		add(buttonEnableAll);
 
 		buttonDisableAll = new MenuButton(buttonX, myY, buttonWidth, buttonHeight, Language.getPhrase('disable_all_button', 'DISABLE ALL'), function() {
+			if (toggleAllCooldown) return;
+			toggleAllCooldown = true;
 			buttonDisableAll.ignoreCheck = false;
 			for (mod in modsGroup.members)
 			{
@@ -150,6 +155,7 @@ class ModsMenuState extends MusicBeatState
 					modsList.disabled.push(mod.folder);
 					mod.icon.color = 0xFFFF6666;
 					mod.text.color = FlxColor.GRAY;
+					if (mod.mustRestart) waitingToRestart = true;
 				}
 			}
 			updateModDisplayData();
@@ -326,8 +332,10 @@ class ModsMenuState extends MusicBeatState
 
 	var holdTime:Float = 0;
 	var exiting:Bool = false;
+	var toggleAllCooldown:Bool = false;
 	override function update(elapsed:Float)
 	{
+		toggleAllCooldown = false;
 		if(controls.BACK && hoveringOnMods && !exiting)
 		{
 			exiting = true;
@@ -749,8 +757,11 @@ class ModsMenuState extends MusicBeatState
 
 	function checkToggleButtons()
 	{
-		buttonEnableAll.visible = buttonEnableAll.enabled = buttonEnableAll.active = modsList.disabled.length > 0;
-		buttonDisableAll.visible = buttonDisableAll.enabled = buttonDisableAll.active = !buttonEnableAll.visible;
+		var hasEnabledMods:Bool = (modsList.enabled.length > 0);
+		buttonDisableAll.visible = buttonDisableAll.enabled = buttonDisableAll.active = hasEnabledMods;
+		buttonEnableAll.visible = buttonEnableAll.enabled = buttonEnableAll.active = !hasEnabledMods;
+		buttonDisableAll.bg.color = 0xFFFF6666;
+		buttonEnableAll.bg.color = FlxColor.GREEN;
 	}
 
 	function reload()

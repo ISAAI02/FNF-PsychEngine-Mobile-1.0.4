@@ -1092,7 +1092,7 @@ class PlayState extends MusicBeatState
 						{
 							note.copyAlpha = false;
 							note.alpha = note.multAlpha;
-							if(ClientPrefs.data.middleScroll && !note.mustPress)
+							if(ClientPrefs.data.middleScroll && MobileData.mode != 4 && !note.mustPress)
 								note.alpha *= 0.35;
 						}
 					});
@@ -1465,7 +1465,12 @@ class PlayState extends MusicBeatState
 								oldNote.resizeByRatio(curStepCrochet / Conductor.stepCrochet);
 							}
 
-							if(ClientPrefs.data.downScroll)
+							if(MobileData.mode == 4 && !sustainNote.mustPress)
+							{
+								sustainNote.flipY = false;
+								sustainNote.correctionOffset = swagNote.height / 2;
+							}
+							else if(ClientPrefs.data.downScroll)
 								sustainNote.correctionOffset = 0;
 						}
 						else if(oldNote.isSustainNote)
@@ -1579,8 +1584,11 @@ class PlayState extends MusicBeatState
 	public var skipArrowStartTween:Bool = false; //for lua
 	private function generateStaticArrows(player:Int):Void
 	{
+		var isVSliceMode:Bool = (MobileData.mode == 4);
 		var strumLineX:Float = ClientPrefs.data.middleScroll ? STRUM_X_MIDDLESCROLL : STRUM_X;
 		var strumLineY:Float = ClientPrefs.data.downScroll ? (FlxG.height - 150) : 50;
+		var vslicePlayerX:Array<Float> = [156, 382, 762, 988];
+
 		for (i in 0...4)
 		{
 			// FlxG.log.add(i);
@@ -1588,11 +1596,11 @@ class PlayState extends MusicBeatState
 			if (player < 1)
 			{
 				if(!ClientPrefs.data.opponentStrums) targetAlpha = 0;
-				else if(ClientPrefs.data.middleScroll) targetAlpha = 0.35;
+				else if(ClientPrefs.data.middleScroll && !isVSliceMode) targetAlpha = 0.35;
 			}
 
 			var babyArrow:StrumNote = new StrumNote(strumLineX, strumLineY, i, player);
-			babyArrow.downScroll = ClientPrefs.data.downScroll;
+			babyArrow.downScroll = (isVSliceMode && player < 1) ? false : ClientPrefs.data.downScroll;
 			if (!isStoryMode && !skipArrowStartTween)
 			{
 				//babyArrow.y -= 10;
@@ -1601,22 +1609,47 @@ class PlayState extends MusicBeatState
 			}
 			else babyArrow.alpha = targetAlpha;
 
-			if (player == 1)
-				playerStrums.add(babyArrow);
+			if (isVSliceMode)
+			{
+				if (player == 1)
+				{
+					var plrScale:Float = PlayState.isPixelStage ? (PlayState.daPixelZoom * 1.24) : 0.87;
+					babyArrow.scale.set(plrScale, plrScale);
+					babyArrow.updateHitbox();
+					babyArrow.x = vslicePlayerX[i % 4];
+					babyArrow.y = FlxG.height - 165;
+					playerStrums.add(babyArrow);
+				}
+				else
+				{
+					var oppScale:Float = PlayState.isPixelStage ? (PlayState.daPixelZoom * 0.57) : 0.4;
+					babyArrow.scale.set(oppScale, oppScale);
+					babyArrow.updateHitbox();
+					babyArrow.x = 36 + (i * 64);
+					babyArrow.y = 35;
+					opponentStrums.add(babyArrow);
+				}
+				strumLineNotes.add(babyArrow);
+			}
 			else
 			{
-				if(ClientPrefs.data.middleScroll)
+				if (player == 1)
+					playerStrums.add(babyArrow);
+				else
 				{
-					babyArrow.x += 310;
-					if(i > 1) { //Up and Right
-						babyArrow.x += FlxG.width / 2 + 20;
+					if(ClientPrefs.data.middleScroll)
+					{
+						babyArrow.x += 310;
+						if(i > 1) { //Up and Right
+							babyArrow.x += FlxG.width / 2 + 20;
+						}
 					}
+					opponentStrums.add(babyArrow);
 				}
-				opponentStrums.add(babyArrow);
-			}
 
-			strumLineNotes.add(babyArrow);
-			babyArrow.playerPosition();
+				strumLineNotes.add(babyArrow);
+				babyArrow.playerPosition();
+			}
 		}
 	}
 
