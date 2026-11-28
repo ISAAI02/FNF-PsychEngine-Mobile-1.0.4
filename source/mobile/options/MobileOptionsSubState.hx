@@ -102,6 +102,34 @@ class MobileOptionsSubState extends BaseOptionsMenu
 		option.onChange = () -> HapticUtil.vibrate(0.0, 0.04, 0.7, 0.8, true);
 		addOption(option);
 
+		#if android
+		option = new Option('Bluetooth Auto-Offset',
+			'Automatically compensates audio latency when Bluetooth headphones are connected, without changing your speaker Note Offset.',
+			'bluetoothAutoOffset', BOOL);
+		option.onChange = () -> BluetoothAudioUtil.refreshState();
+		addOption(option);
+
+		option = new Option('Auto-Detect BT Latency',
+			'Automatically reads Bluetooth output latency from Android + adds Bluetooth Offset Adjust. Uncheck to set manual Bluetooth offset.',
+			'bluetoothAutoDetect', BOOL);
+		option.onChange = () -> BluetoothAudioUtil.refreshState();
+		addOption(option);
+
+		option = new Option('Bluetooth Offset Adjust',
+			'Fine-tune Bluetooth audio offset in milliseconds (or full manual BT offset when Auto-Detect is off).',
+			'bluetoothOffset', INT);
+		option.displayFormat = '%vms';
+		option.scrollSpeed = 40;
+		option.minValue = -500;
+		option.maxValue = 500;
+		addOption(option);
+
+		option = new Option('Mute Hitsound on Bluetooth',
+			'Automatically mutes note hitsound ticks while Bluetooth headphones are connected so delayed clicks do not hurt rhythm.',
+			'bluetoothMuteHitsound', BOOL);
+		addOption(option);
+		#end
+
 		super();
 	}
 }

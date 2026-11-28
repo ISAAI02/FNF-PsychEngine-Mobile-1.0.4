@@ -78,6 +78,38 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 		option.onChange = () -> HapticUtil.vibrate(0.0, 0.04, 0.7, 0.8, true);
 		addOption(option);
 
+		#if android
+		var option:Option = new Option('Bluetooth Auto-Offset',
+			'Automatically compensates audio latency when Bluetooth headphones are connected, keeping speaker Note Offset separate.',
+			'bluetoothAutoOffset',
+			BOOL);
+		option.onChange = () -> BluetoothAudioUtil.refreshState();
+		addOption(option);
+
+		var option:Option = new Option('Auto-Detect BT Latency',
+			'Automatically reads Bluetooth output latency from Android + adds Bluetooth Offset Adjust.',
+			'bluetoothAutoDetect',
+			BOOL);
+		option.onChange = () -> BluetoothAudioUtil.refreshState();
+		addOption(option);
+
+		var option:Option = new Option('Bluetooth Offset Adjust',
+			'Fine-tune Bluetooth audio offset in milliseconds (or full manual BT offset when Auto-Detect is off).',
+			'bluetoothOffset',
+			INT);
+		option.displayFormat = '%vms';
+		option.scrollSpeed = 40;
+		option.minValue = -500;
+		option.maxValue = 500;
+		addOption(option);
+
+		var option:Option = new Option('Mute Hitsound on Bluetooth',
+			'Automatically mutes note hitsound ticks while Bluetooth headphones are connected.',
+			'bluetoothMuteHitsound',
+			BOOL);
+		addOption(option);
+		#end
+
 		var option:Option = new Option('Sustains as One Note',
 			"If checked, Hold Notes can't be pressed if you miss,\nand count as a single Hit/Miss.\nUncheck this if you prefer the old Input System.",
 			'guitarHeroSustains',

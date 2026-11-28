@@ -50,7 +50,7 @@ class MobileInputManager extends FlxTypedSpriteGroup<TouchButton>
 	 */
 	public inline function buttonPressed(button:MobileInputID):Bool
 	{
-		return anyPressed([button]);
+		return checkStatus(button, PRESSED);
 	}
 
 	/**
@@ -61,7 +61,7 @@ class MobileInputManager extends FlxTypedSpriteGroup<TouchButton>
 	 */
 	public inline function buttonJustPressed(button:MobileInputID):Bool
 	{
-		return anyJustPressed([button]);
+		return checkStatus(button, JUST_PRESSED);
 	}
 
 	/**
@@ -72,7 +72,7 @@ class MobileInputManager extends FlxTypedSpriteGroup<TouchButton>
 	 */
 	public inline function buttonJustReleased(button:MobileInputID):Bool
 	{
-		return anyJustReleased([button]);
+		return checkStatus(button, JUST_RELEASED);
 	}
 
 	/**
@@ -83,7 +83,7 @@ class MobileInputManager extends FlxTypedSpriteGroup<TouchButton>
 	 */
 	public inline function buttonReleased(button:MobileInputID):Bool
 	{
-		return anyReleased([button]);
+		return checkStatus(button, RELEASED);
 	}
 
 	/**
@@ -142,16 +142,17 @@ class MobileInputManager extends FlxTypedSpriteGroup<TouchButton>
 		switch (button)
 		{
 			case MobileInputID.ANY:
-				for (button in trackedButtons.keys())
-					if (checkStatusUnsafe(button, state) == true)
+				for (btn in trackedButtons)
+					if (btn != null && checkButtonState(btn, state))
 						return true;
 
 			case MobileInputID.NONE:
 				return false;
 
 			default:
-				if (trackedButtons.exists(button))
-					return checkStatusUnsafe(button, state);
+				var btn:TouchButton = trackedButtons.get(button);
+				if (btn != null)
+					return checkButtonState(btn, state);
 		}
 		return false;
 	}
@@ -175,15 +176,21 @@ class MobileInputManager extends FlxTypedSpriteGroup<TouchButton>
 		return false;
 	}
 
-	function checkStatusUnsafe(button:MobileInputID, state:ButtonsStates = JUST_PRESSED):Bool
+	inline function checkButtonState(btn:TouchButton, state:ButtonsStates = JUST_PRESSED):Bool
 	{
 		return switch (state)
 		{
-			case RELEASED: trackedButtons.get(button).released;
-			case JUST_RELEASED: trackedButtons.get(button).justReleased;
-			case PRESSED: trackedButtons.get(button).pressed;
-			case JUST_PRESSED: trackedButtons.get(button).justPressed;
+			case RELEASED: btn.released;
+			case JUST_RELEASED: btn.justReleased;
+			case PRESSED: btn.pressed;
+			case JUST_PRESSED: btn.justPressed;
 		}
+	}
+
+	function checkStatusUnsafe(button:MobileInputID, state:ButtonsStates = JUST_PRESSED):Bool
+	{
+		var btn:TouchButton = trackedButtons.get(button);
+		return btn != null ? checkButtonState(btn, state) : false;
 	}
 
 	public function updateTrackedButtons()

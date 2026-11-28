@@ -89,6 +89,7 @@ class TitleState extends MusicBeatState
 			persistentDraw = true;
 			MobileData.init();
 			HapticUtil.init();
+			BluetoothAudioUtil.init();
 		}
 
 		if (FlxG.save.data.weekCompleted != null)

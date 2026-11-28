@@ -21,6 +21,10 @@ import states.TitleState;
 	public var gameOverVibration:Bool = false;
 	public var hapticsMode:String = "All";
 	public var hapticsIntensity:Float = 1.0;
+	public var bluetoothAutoOffset:Bool = true;
+	public var bluetoothAutoDetect:Bool = true;
+	public var bluetoothOffset:Int = 0;
+	public var bluetoothMuteHitsound:Bool = true;
 	public var fpsRework:Bool = false;
 	
 	public var downScroll:Bool = false;
@@ -282,6 +286,11 @@ class ClientPrefs {
 			}
 			reloadVolumeKeys();
 		}
+	}
+
+	inline public static function getEffectiveNoteOffset():Int
+	{
+		return data.noteOffset + BluetoothAudioUtil.getActiveBluetoothOffset();
 	}
 
 	inline public static function getGameplaySetting(name:String, defaultValue:Dynamic = null, ?customDefaultValue:Bool = false):Dynamic

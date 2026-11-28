@@ -254,7 +254,7 @@ class Note extends FlxSprite
 		// MAKE SURE ITS DEFINITELY OFF SCREEN?
 		y -= 2000;
 		this.strumTime = strumTime;
-		if(!inEditor) this.strumTime += ClientPrefs.data.noteOffset;
+		if(!inEditor) this.strumTime += ClientPrefs.getEffectiveNoteOffset();
 
 		this.noteData = noteData;
 

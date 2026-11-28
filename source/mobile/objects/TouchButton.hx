@@ -171,7 +171,17 @@ class TypedTouchButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 
 	public var statusIndicatorType(default, set):StatusIndicators = ALPHA;
 
-	public var brightShader:ButtonBrightnessShader = new ButtonBrightnessShader();
+	public var brightShader:ButtonBrightnessShader = null;
+
+	inline function ensureBrightShader():ButtonBrightnessShader
+	{
+		if (brightShader == null)
+		{
+			brightShader = new ButtonBrightnessShader();
+			brightShader.color = color;
+		}
+		return brightShader;
+	}
 
 	public var justReleased(get, never):Bool;
 	public var released(get, never):Bool;
@@ -206,7 +216,7 @@ class TypedTouchButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 		super(X, Y);
 
 		if (statusIndicatorType == BRIGHTNESS)
-			shader = brightShader;
+			shader = ensureBrightShader();
 
 		onUp = new TouchButtonEvent();
 		onDown = new TouchButtonEvent();
@@ -236,6 +246,7 @@ class TypedTouchButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 
 		currentInput = null;
 		input = null;
+		brightShader = null;
 
 		super.destroy();
 	}
@@ -379,7 +390,7 @@ class TypedTouchButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 			case ALPHA:
 				alpha = statusAlphas[status];
 			case BRIGHTNESS:
-				brightShader.brightness.value = [statusBrightness[status]];
+				ensureBrightShader().brightness.value = [statusBrightness[status]];
 			case NONE: // no balls
 		}
 	}
@@ -438,8 +449,8 @@ class TypedTouchButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 
 		updateLabelPosition();
 
-		if (statusIndicatorType == BRIGHTNESS && label != null && brightShader != null)
-			_spriteLabel.shader = brightShader;
+		if (statusIndicatorType == BRIGHTNESS && label != null)
+			_spriteLabel.shader = ensureBrightShader();
 
 		return Value;
 	}
@@ -485,7 +496,8 @@ class TypedTouchButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 	{
 		if (_spriteLabel != null)
 			_spriteLabel.color = Value;
-		brightShader.color = Value;
+		if (brightShader != null)
+			brightShader.color = Value;
 		super.set_color(Value);
 		return Value;
 	}
@@ -527,9 +539,10 @@ class TypedTouchButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 	{
 		if (Value == BRIGHTNESS)
 		{
-			shader = brightShader;
+			var bs:ButtonBrightnessShader = ensureBrightShader();
+			shader = bs;
 			if (_spriteLabel != null)
-				_spriteLabel.shader = brightShader;
+				_spriteLabel.shader = bs;
 		}
 		else
 		{

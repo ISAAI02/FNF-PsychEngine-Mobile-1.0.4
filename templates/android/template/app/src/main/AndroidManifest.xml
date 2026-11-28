@@ -13,6 +13,7 @@
 	<uses-feature android:name="android.hardware.audio.output" android:required="false" />
 
 	<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+	<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 	::foreach ANDROID_PERMISSIONS::<uses-permission android:name="::__current__::" />
 	::end::
 

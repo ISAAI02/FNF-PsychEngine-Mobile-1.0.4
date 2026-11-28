@@ -130,7 +130,9 @@ class NoteOffsetState extends MusicBeatState
 		timeTxt.visible = false;
 		timeTxt.cameras = [camHUD];
 
-		barPercent = ClientPrefs.data.noteOffset;
+		BluetoothAudioUtil.refreshState();
+		_editingBluetoothOffset = isBluetoothOffsetMode();
+		barPercent = _editingBluetoothOffset ? ClientPrefs.data.bluetoothOffset : ClientPrefs.data.noteOffset;
 		updateNoteDelay();
 		
 		timeBar = new Bar(0, timeTxt.y + (timeTxt.height / 3), 'healthBar', function() return barPercent, delayMin, delayMax);
@@ -176,6 +178,12 @@ class NoteOffsetState extends MusicBeatState
 	var holdTime:Float = 0;
 	var onComboMenu:Bool = true;
 	var holdingObjectType:Null<Bool> = null;
+	var _editingBluetoothOffset:Bool = false;
+
+	inline function isBluetoothOffsetMode():Bool
+	{
+		return ClientPrefs.data.bluetoothAutoOffset && BluetoothAudioUtil.isBluetoothConnected();
+	}
 
 	var startMousePos:FlxPoint = new FlxPoint();
 	var startComboOffset:FlxPoint = new FlxPoint();
@@ -357,16 +365,26 @@ class NoteOffsetState extends MusicBeatState
 		}
 		else
 		{
+			BluetoothAudioUtil.poll(elapsed, 0.5);
+			var btNow:Bool = isBluetoothOffsetMode();
+			if (btNow != _editingBluetoothOffset)
+			{
+				_editingBluetoothOffset = btNow;
+				barPercent = _editingBluetoothOffset ? ClientPrefs.data.bluetoothOffset : ClientPrefs.data.noteOffset;
+				updateNoteDelay();
+			}
+
+			var curTargetOffset:Int = _editingBluetoothOffset ? ClientPrefs.data.bluetoothOffset : ClientPrefs.data.noteOffset;
 			if(controls.UI_LEFT_P)
 			{
 				holdTime = 0;
-				barPercent = Math.max(delayMin, Math.min(ClientPrefs.data.noteOffset - 1, delayMax));
+				barPercent = Math.max(delayMin, Math.min(curTargetOffset - 1, delayMax));
 				updateNoteDelay();
 			}
 			else if(controls.UI_RIGHT_P)
 			{
 				holdTime = 0;
-				barPercent = Math.max(delayMin, Math.min(ClientPrefs.data.noteOffset + 1, delayMax));
+				barPercent = Math.max(delayMin, Math.min(curTargetOffset + 1, delayMax));
 				updateNoteDelay();
 			}
 
@@ -509,8 +527,28 @@ class NoteOffsetState extends MusicBeatState
 
 	function updateNoteDelay()
 	{
-		ClientPrefs.data.noteOffset = Math.round(barPercent);
-		timeTxt.text = Language.getPhrase('delay_current_offset', 'Current offset: {1} ms', [Math.floor(barPercent)]);
+		if (_editingBluetoothOffset)
+		{
+			ClientPrefs.data.bluetoothOffset = Math.round(barPercent);
+			var totalEff:Int = ClientPrefs.getEffectiveNoteOffset();
+			var devName:String = BluetoothAudioUtil.getDeviceName();
+			var btLabel:String = (devName != null && devName.length > 0) ? devName : 'Bluetooth';
+			if (ClientPrefs.data.bluetoothAutoDetect)
+			{
+				var autoMs:Int = BluetoothAudioUtil.getDetectedLatencyMs();
+				var sign:String = ClientPrefs.data.bluetoothOffset >= 0 ? '+' : '';
+				timeTxt.text = 'BT ($btLabel): $totalEff ms [Auto ${autoMs}ms $sign${ClientPrefs.data.bluetoothOffset}ms]';
+			}
+			else
+			{
+				timeTxt.text = 'BT ($btLabel): $totalEff ms [Manual ${ClientPrefs.data.bluetoothOffset}ms]';
+			}
+		}
+		else
+		{
+			ClientPrefs.data.noteOffset = Math.round(barPercent);
+			timeTxt.text = Language.getPhrase('delay_current_offset', 'Current offset: {1} ms', [Math.floor(barPercent)]);
+		}
 	}
 
 	function updateMode()

@@ -40,6 +40,8 @@ class FPSCounter extends TextField
 	@:noCompletion private var prevTime:Int;
 
 	public var os:String = '';
+	@:noCompletion private var _lastDisplayedFPS:Int = -1;
+	@:noCompletion private var _lastDisplayedMemDec:Int = -1;
 
 	public function new(x:Float = 10, y:Float = 10, color:Int = 0x000000)
 	{
@@ -71,9 +73,17 @@ class FPSCounter extends TextField
 
 	public dynamic function updateText():Void // so people can override it in hscript
 	{
+		var memBytes:Float = memoryMegas;
+		var memDec:Int = Math.round(memBytes / 104857.6); // 0.1 MB precision
+		if (currentFPS == _lastDisplayedFPS && memDec == _lastDisplayedMemDec)
+			return;
+
+		_lastDisplayedFPS = currentFPS;
+		_lastDisplayedMemDec = memDec;
+
 		text = 
 		'FPS: $currentFPS' + 
-		'\nMemory: ${flixel.util.FlxStringUtil.formatBytes(memoryMegas)}' +
+		'\nMemory: ${flixel.util.FlxStringUtil.formatBytes(memBytes)}' +
 		os;
 
 		textColor = 0xFFFFFFFF;
@@ -113,12 +123,15 @@ class FPSCounter extends TextField
 		}
 		else
 		{
+			if (!visible)
+				return;
+
 			final now:Float = haxe.Timer.stamp() * 1000;
 			times.push(now);
 			while (times[0] < now - 1000)
 				times.shift();
-			// prevents the overlay from updating every frame, why would you need to anyways @crowplexus
-			if (deltaTimeout < 50)
+			// Throttle text overlay updates to every 250ms to avoid per-frame TextField bitmap churn
+			if (deltaTimeout < 250)
 			{
 				deltaTimeout += deltaTime;
 				return;
@@ -128,7 +141,8 @@ class FPSCounter extends TextField
 			deltaTimeout = 0.0;
 		}
 
-		updateText();
+		if (visible)
+			updateText();
 	}
 
 	inline function get_memoryMegas():Float

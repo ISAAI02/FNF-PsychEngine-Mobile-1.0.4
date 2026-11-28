@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - beta
 
 jobs:
   Android:
@@ -14,5 +15,5 @@ jobs:
       os: ubuntu-latest
       buildArgs: "android -final -D officialBuild"
       setupCommand: sh ./setup/unix.sh
-      artifactName: FNF-1.0.4-Android-APK
+      artifactName: FNF-1.0.4-Beta-Android-APK
       artifactPath: "export/release/android/bin/app/build/outputs/apk/release/*.apk"
