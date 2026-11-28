@@ -5,6 +5,7 @@ import flixel.FlxSubState;
 
 class CustomFadeTransition extends FlxSubState {
 	public static var finishCallback:Void->Void;
+	public var finishCallbackInstance:Void->Void = null;
 	var isTransIn:Bool = false;
 	var transBlack:FlxSprite;
 	var transGradient:FlxSprite;
@@ -19,9 +20,15 @@ class CustomFadeTransition extends FlxSubState {
 
 	override function create()
 	{
-		cameras = [FlxG.cameras.list[FlxG.cameras.list.length-1]];
-		var width:Int = Std.int(FlxG.width / Math.max(camera.zoom, 0.001));
-		var height:Int = Std.int(FlxG.height / Math.max(camera.zoom, 0.001));
+		var cam:FlxCamera = (FlxG.cameras.list.length > 0) ? FlxG.cameras.list[FlxG.cameras.list.length - 1] : FlxG.camera;
+		if (cam != null)
+		{
+			cam.visible = true;
+			cameras = [cam];
+		}
+		var camZoom:Float = (camera != null) ? Math.max(camera.zoom, 0.001) : 1.0;
+		var width:Int = Std.int(FlxG.width / camZoom);
+		var height:Int = Std.int(FlxG.height / camZoom);
 		transGradient = FlxGradient.createGradientFlxSprite(1, height, (isTransIn ? [0x0, FlxColor.BLACK] : [FlxColor.BLACK, 0x0]));
 		transGradient.scale.x = width;
 		transGradient.updateHitbox();
@@ -47,12 +54,14 @@ class CustomFadeTransition extends FlxSubState {
 	override function update(elapsed:Float) {
 		super.update(elapsed);
 
-		final height:Float = FlxG.height * Math.max(camera.zoom, 0.001);
-		final targetPos:Float = transGradient.height + 50 * Math.max(camera.zoom, 0.001);
+		final dt:Float = FlxMath.bound(elapsed, 0.0, 0.1);
+		final camZoom:Float = (camera != null) ? Math.max(camera.zoom, 0.001) : 1.0;
+		final height:Float = FlxG.height * camZoom;
+		final targetPos:Float = transGradient.height + 50 * camZoom;
 		if(duration > 0)
-			transGradient.y += (height + targetPos) * elapsed / duration;
+			transGradient.y += (height + targetPos) * dt / duration;
 		else
-			transGradient.y = (targetPos) * elapsed;
+			transGradient.y = targetPos;
 
 		if(isTransIn)
 			transBlack.y = transGradient.y + transGradient.height;
@@ -70,10 +79,14 @@ class CustomFadeTransition extends FlxSubState {
 	{
 		super.close();
 
-		if(finishCallback != null)
-		{
-			finishCallback();
+		var cb:Void->Void = (finishCallbackInstance != null) ? finishCallbackInstance : finishCallback;
+		if (finishCallback == finishCallbackInstance)
 			finishCallback = null;
+		finishCallbackInstance = null;
+
+		if(cb != null)
+		{
+			cb();
 		}
 	}
 }

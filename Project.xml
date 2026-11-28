@@ -66,6 +66,7 @@
 	<set name="BUILD_DIR" value="export/32bit" if="32bits" />
 
 	<classpath name="source" />
+	<template path="templates" if="android" />
 
 	<!-- __________________________ Game Assets & Etc. __________________________ -->
 

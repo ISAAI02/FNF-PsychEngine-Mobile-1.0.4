@@ -396,6 +396,9 @@ class HScript extends Iris
 		set('setMobilePad', hscriptSwitchPad);
 		set('getMobileControlsMode', () -> MobileData.modeToString(MobileData.mode));
 		set('getMobileControlsID', () -> MobileData.mode);
+		set('vibrate', function(?duration:Null<Float>, ?period:Null<Float>, ?amplitude:Null<Float>) {
+			HapticUtil.vibrateLegacy(duration, period, amplitude);
+		});
 		set('vibrateHaptics', function(?duration:Null<Float>, ?amplitude:Null<Float>, ?period:Null<Float>, ?sharpness:Null<Float>) {
 			var dur:Float = (duration != null) ? duration : 0.1;
 			var amp:Float = (amplitude != null) ? amplitude : 0.5;

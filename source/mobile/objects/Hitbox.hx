@@ -326,8 +326,8 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		hint.labelStatusDiff = 0.00001;
 		hint.canChangeLabelAlpha = false;
 
-		var hitW:Int = 284;
-		var hitH:Int = 360;
+		var hitW:Int = 226;
+		var hitH:Int = 450;
 
 		if (!inPlayState)
 		{
@@ -379,7 +379,7 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		{
 			hint.makeGraphic(hitW, hitH, FlxColor.TRANSPARENT);
 			hint.x = X + (121.0 - hitW) * 0.5;
-			hint.y = Y - (hitH - 118.6) * 0.5;
+			hint.y = FlxMath.bound(Y - (hitH - 118.6) * 0.5, 0, FlxG.height - hitH);
 			hint.alpha = 0.00001;
 			hint.onDown.callback = () -> onButtonDown.dispatch(hint);
 			hint.onOut.callback = hint.onUp.callback = () -> onButtonUp.dispatch(hint);
@@ -402,8 +402,9 @@ class Hitbox extends MobileInputManager implements IMobileControls
 
 		var gapLeft:Float = Math.min(strumA.x + strumA.width, strumB.x + strumB.width);
 		var gapRight:Float = Math.max(strumA.x, strumB.x);
+		var rawGap:Float = gapRight - gapLeft;
 		var pairMidX:Float = (gapLeft + gapRight) * 0.5;
-		var dualHalf:Float = Math.max(45.0, Math.abs(gapRight - gapLeft) * 0.5 + 8.0);
+		var dualHalf:Float = (rawGap > 16.0) ? FlxMath.bound(rawGap * 0.22, 8.0, 16.0) : 8.0;
 
 		if (strumA.x <= strumB.x)
 		{
@@ -416,8 +417,8 @@ class Hitbox extends MobileInputManager implements IMobileControls
 			btnA.x = pairMidX - dualHalf;
 		}
 
-		btnA.y = strumA.y - (btnA.height - strumA.height) * 0.5;
-		btnB.y = strumB.y - (btnB.height - strumB.height) * 0.5;
+		btnA.y = FlxMath.bound(strumA.y - (btnA.height - strumA.height) * 0.5, 0, FlxG.height - btnA.height);
+		btnB.y = FlxMath.bound(strumB.y - (btnB.height - strumB.height) * 0.5, 0, FlxG.height - btnB.height);
 	}
 
 	override public function update(elapsed:Float):Void

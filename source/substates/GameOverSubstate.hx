@@ -167,9 +167,19 @@ class GameOverSubstate extends MusicBeatSubstate
 			}
 			else if (controls.BACK)
 			{
+				isEnding = true;
+				if (PlayState.instance != null)
+				{
+					PlayState.instance.isExiting = true;
+					PlayState.instance.canResync = false;
+				}
 				#if DISCORD_ALLOWED DiscordClient.resetClientID(); #end
 				FlxG.camera.visible = false;
-				FlxG.sound.music.stop();
+				if (FlxG.sound.music != null)
+				{
+					FlxG.sound.music.onComplete = null;
+					FlxG.sound.music.stop();
+				}
 				PlayState.deathCounter = 0;
 				PlayState.seenCutscene = false;
 				PlayState.chartingMode = false;

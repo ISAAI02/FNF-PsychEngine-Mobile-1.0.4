@@ -54,10 +54,11 @@ class FreeplayState extends MusicBeatState
 
 	override function create()
 	{
-		//Paths.clearStoredMemory();
-		//Paths.clearUnusedMemory();
+		Paths.clearStoredMemory();
 		
-		persistentUpdate = true;
+		persistentUpdate = persistentDraw = true;
+		if (FlxG.camera != null)
+			FlxG.camera.visible = true;
 		PlayState.isStoryMode = false;
 		WeekData.reloadWeekFiles(false);
 
@@ -168,8 +169,11 @@ class FreeplayState extends MusicBeatState
 		add(missingText);
 
 		if(curSelected >= songs.length) curSelected = 0;
-		bg.color = songs[curSelected].color;
-		intendedColor = bg.color;
+		if(songs.length > 0)
+		{
+			bg.color = songs[curSelected].color;
+			intendedColor = bg.color;
+		}
 		lerpSelected = curSelected;
 
 		curDifficulty = Math.round(Math.max(0, Difficulty.defaultList.indexOf(lastDifficultyName)));
@@ -193,11 +197,15 @@ class FreeplayState extends MusicBeatState
 		player = new MusicPlayer(this);
 		add(player);
 		
-		changeSelection();
-		updateTexts();
+		if (songs.length > 0)
+		{
+			changeSelection();
+			updateTexts();
+		}
 
 		addTouchPad('LEFT_FULL', 'A_B_C_X_Y_Z');
 		super.create();
+		Paths.clearUnusedMemory();
 	}
 
 	override function closeSubState()

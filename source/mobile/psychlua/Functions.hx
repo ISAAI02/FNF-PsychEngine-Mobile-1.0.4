@@ -127,16 +127,9 @@ class MobileFunctions
 			return false;
 		});
 
-		Lua_helper.add_callback(lua, "vibrate", (?duration:Int, ?period:Int) ->
+		Lua_helper.add_callback(lua, "vibrate", (?duration:Null<Float>, ?period:Null<Float>, ?amplitude:Null<Float>) ->
 		{
-			if (duration == null)
-				return FunkinLua.luaTrace('vibrate: No duration specified.');
-			else if (period == null)
-				period = 0;
-			if (HapticUtil.hapticsAvailable)
-				HapticUtil.vibrate(period / 1000.0, duration / 1000.0, 0.6, 0.5, false);
-			else
-				Haptic.vibrate(period, duration);
+			HapticUtil.vibrateLegacy(duration, period, amplitude);
 		});
 
 		Lua_helper.add_callback(lua, "vibrateHaptics", (?duration:Null<Float>, ?amplitude:Null<Float>, ?period:Null<Float>, ?sharpness:Null<Float>) ->

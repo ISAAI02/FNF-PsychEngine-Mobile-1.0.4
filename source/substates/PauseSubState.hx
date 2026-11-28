@@ -158,6 +158,7 @@ class PauseSubState extends MusicBeatSubstate
 
 	var holdTime:Float = 0;
 	var cantUnpause:Float = 0.1;
+	var isExitingMenu:Bool = false;
 	override function update(elapsed:Float)
 	{
 		cantUnpause -= elapsed;
@@ -165,6 +166,9 @@ class PauseSubState extends MusicBeatSubstate
 			pauseMusic.volume += 0.01 * elapsed;
 
 		super.update(elapsed);
+
+		if (isExitingMenu)
+			return;
 
 		if(controls.BACK)
 		{
@@ -231,6 +235,11 @@ class PauseSubState extends MusicBeatSubstate
 				{
 					if(menuItems.length - 1 != curSelected && difficultyChoices.contains(daSelected))
 					{
+						isExitingMenu = true;
+						PlayState.instance.isExiting = true;
+						PlayState.instance.canResync = false;
+						if (FlxG.sound.music != null)
+							FlxG.sound.music.onComplete = null;
 						Song.loadFromJson(poop, songLowercase);
 						PlayState.storyDifficulty = curSelected;
 						MusicBeatState.resetState();
@@ -276,10 +285,14 @@ class PauseSubState extends MusicBeatSubstate
 					PlayState.changedDifficulty = true;
 					practiceText.visible = PlayState.instance.practiceMode;
 				case "Restart Song":
+					isExitingMenu = true;
 					restartSong();
 				case 'Chart Editor':
+					isExitingMenu = true;
+					PlayState.instance.isExiting = true;
 					PlayState.instance.openChartEditor();
 				case "Leave Charting Mode":
+					isExitingMenu = true;
 					restartSong();
 					PlayState.chartingMode = false;
 				case 'Skip Time':
@@ -309,9 +322,13 @@ class PauseSubState extends MusicBeatSubstate
 					PlayState.instance.botplayTxt.alpha = 1;
 					PlayState.instance.botplaySine = 0;
 				case 'Options':
+					isExitingMenu = true;
 					PlayState.instance.paused = true; // For lua
+					PlayState.instance.isExiting = true;
 					PlayState.instance.vocals.volume = 0;
 					PlayState.instance.canResync = false;
+					if (FlxG.sound.music != null)
+						FlxG.sound.music.onComplete = null;
 					MusicBeatState.switchState(new OptionsState());
 					if(ClientPrefs.data.pauseMusic != 'None')
 					{
@@ -321,11 +338,15 @@ class PauseSubState extends MusicBeatSubstate
 					}
 					OptionsState.onPlayState = true;
 				case "Exit to menu":
+					isExitingMenu = true;
 					#if DISCORD_ALLOWED DiscordClient.resetClientID(); #end
 					PlayState.deathCounter = 0;
 					PlayState.seenCutscene = false;
 
+					PlayState.instance.isExiting = true;
 					PlayState.instance.canResync = false;
+					if (FlxG.sound.music != null)
+						FlxG.sound.music.onComplete = null;
 					Mods.loadTopMod();
 					if(PlayState.isStoryMode)
 						MusicBeatState.switchState(new StoryMenuState());
@@ -361,7 +382,13 @@ class PauseSubState extends MusicBeatSubstate
 	public static function restartSong(noTrans:Bool = false)
 	{
 		PlayState.instance.paused = true; // For lua
-		FlxG.sound.music.volume = 0;
+		PlayState.instance.isExiting = true;
+		PlayState.instance.canResync = false;
+		if (FlxG.sound.music != null)
+		{
+			FlxG.sound.music.onComplete = null;
+			FlxG.sound.music.volume = 0;
+		}
 		PlayState.instance.vocals.volume = 0;
 
 		if(noTrans)

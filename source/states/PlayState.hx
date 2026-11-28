@@ -189,6 +189,7 @@ class PlayState extends MusicBeatState
 
 	private var generatedMusic:Bool = false;
 	public var endingSong:Bool = false;
+	public var isExiting:Bool = false;
 	public var startingSong:Bool = false;
 	private var updateTime:Bool = true;
 	public static var changedDifficulty:Bool = false;
@@ -1682,7 +1683,8 @@ class PlayState extends MusicBeatState
 	override function openSubState(SubState:FlxSubState)
 	{
 		stagesFunc(function(stage:BaseStage) stage.openSubState(SubState));
-		if (paused)
+		var isTransitionSub:Bool = Std.isOfType(SubState, CustomFadeTransition);
+		if (paused && !isExiting && !endingSong && !transitioning && !isTransitionSub)
 		{
 			if (FlxG.sound.music != null)
 			{
@@ -1709,6 +1711,12 @@ class PlayState extends MusicBeatState
 		stagesFunc(function(stage:BaseStage) stage.closeSubState());
 		if (paused)
 		{
+			if (isExiting || endingSong || transitioning || !canResync)
+			{
+				shutdownThread = true;
+				return;
+			}
+
 			if (FlxG.sound.music != null && !startingSong && canResync)
 			{
 				resyncVocals();
@@ -2567,8 +2575,12 @@ class PlayState extends MusicBeatState
 		#end
 
 		var ret:Dynamic = callOnScripts('onEndSong', null, true);
-		if(ret != LuaUtils.Function_Stop && !transitioning)
+			if(ret != LuaUtils.Function_Stop && !transitioning)
 		{
+			isExiting = true;
+			shutdownThread = true;
+			if (FlxG.sound.music != null)
+				FlxG.sound.music.onComplete = null;
 			#if !switch
 			var percent:Float = ratingPercent;
 			if(Math.isNaN(percent)) percent = 0;
@@ -3318,6 +3330,10 @@ class PlayState extends MusicBeatState
 	}
 
 	override function destroy() {
+		isExiting = true;
+		shutdownThread = true;
+		if (FlxG.sound.music != null)
+			FlxG.sound.music.onComplete = null;
 		HapticUtil.resetNoteHits();
 		MobileData.forcedMode = null;
 		if (_vsliceSavedDownScroll != null)
@@ -4164,7 +4180,7 @@ class PlayState extends MusicBeatState
 
 	function checkForResync()
 	{
-		if (endingSong || paused || shutdownThread)
+		if (endingSong || isExiting || transitioning || paused || shutdownThread || !canResync)
 			return;
 
 		if (requiresSyncing)
@@ -4178,17 +4194,24 @@ class PlayState extends MusicBeatState
 
 	public function runSongSyncThread()
 	{
+		if (endingSong || isExiting || transitioning || shutdownThread)
+			return;
+
 		Thread.create(function()
 		{
-			while (!endingSong && !paused && !shutdownThread)
+			while (!endingSong && !isExiting && !transitioning && !paused && !shutdownThread)
 			{
 				if (requiresSyncing)
+				{
+					Sys.sleep(0.05);
 					continue;
+				}
 
 				if (gameFroze)
 				{
 					lastCorrectSongPos = Conductor.songPosition;
 					requiresSyncing = true;
+					Sys.sleep(0.05);
 					continue;
 				}
 				gameFroze = true;

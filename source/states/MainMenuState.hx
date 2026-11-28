@@ -116,7 +116,9 @@ class MainMenuState extends MusicBeatState
 		#end
 
 		#if CHECK_FOR_UPDATES
-		if (showOutdatedWarning && ClientPrefs.data.checkForUpdates && substates.OutdatedSubState.updateVersion != psychEngineVersion) {
+		var targetVer:String = substates.OutdatedSubState.updateVersion;
+		if (showOutdatedWarning && ClientPrefs.data.checkForUpdates && targetVer != null && targetVer.length > 0
+			&& targetVer.length <= 20 && !targetVer.contains('<') && targetVer != psychEngineVersion) {
 			persistentUpdate = false;
 			showOutdatedWarning = false;
 			openSubState(new substates.OutdatedSubState());

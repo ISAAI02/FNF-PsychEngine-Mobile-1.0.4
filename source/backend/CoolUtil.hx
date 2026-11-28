@@ -10,14 +10,26 @@ class CoolUtil
 {
 	public static function checkForUpdates(url:String = null):String {
 		if (url == null || url.length == 0)
-			url = "https://raw.githubusercontent.com/MobilePorting/FNF-PsychEngine-Mobile/main/gitVersion.txt";
+			url = "https://raw.githubusercontent.com/ISAAI02/FNF-PsychEngine-Mobile-1.0.4/main/gitVersion.txt";
 		var version:String = states.MainMenuState.psychEngineVersion.trim();
 		if(ClientPrefs.data.checkForUpdates) {
 			trace('checking for updates...');
 			var http = new haxe.Http(url);
+			var httpStatus:Int = 0;
+			http.onStatus = function(status:Int)
+			{
+				httpStatus = status;
+			};
 			http.onData = function (data:String)
 			{
+				if (data == null || (httpStatus != 0 && httpStatus != 200) || data.contains('<') || data.contains('{'))
+					return;
+
 				var newVersion:String = data.split('\n')[0].trim();
+				var validSemver:EReg = ~/^[0-9]+\.[0-9]+(\.[0-9]+)?([a-zA-Z0-9._-]*)?$/;
+				if (newVersion.length == 0 || newVersion.length > 20 || !validSemver.match(newVersion))
+					return;
+
 				trace('version online: $newVersion, your version: $version');
 				if(newVersion != version) {
 					trace('versions arent matching! please update');
@@ -30,7 +42,11 @@ class CoolUtil
 			http.onError = function (error) {
 				trace('error: $error');
 			}
-			http.request();
+			try {
+				http.request();
+			} catch (e:Dynamic) {
+				trace('update check failed: $e');
+			}
 		}
 		return version;
 	}

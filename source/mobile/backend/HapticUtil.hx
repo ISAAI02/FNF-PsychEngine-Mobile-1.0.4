@@ -179,6 +179,52 @@ class HapticUtil
 		vibrate(DEFAULT_VIBRATION_PERIOD, DEFAULT_VIBRATION_DURATION, 0.85, DEFAULT_VIBRATION_SHARPNESS, false);
 	}
 
+	/**
+	 * Script-friendly `vibrate` handler supporting:
+	 * - `vibrate(500)` (ms)
+	 * - `vibrate(0.5)` (seconds)
+	 * - `vibrate(0, 500)` (Lime period, duration order)
+	 * - `vibrate(500, 100)` (duration, period order)
+	 * - `vibrate()` (default 100ms pulse)
+	 */
+	public static function vibrateLegacy(?arg1:Null<Float>, ?arg2:Null<Float>, ?amplitude:Null<Float>):Void
+	{
+		var durMs:Float = (arg1 != null) ? arg1 : 100.0;
+		var perMs:Float = (arg2 != null) ? arg2 : 0.0;
+
+		// Support Lime-style vibrate(0, 500) where arg1 is period=0 and arg2 is duration
+		if (durMs <= 0.0 && perMs > 0.0)
+		{
+			durMs = perMs;
+			perMs = 0.0;
+		}
+
+		if (durMs <= 0.0)
+			return;
+
+		// Convert fractional seconds (e.g. 0.25) to milliseconds
+		if (durMs > 0.0 && durMs < 5.0 && Math.floor(durMs) != durMs)
+			durMs *= 1000.0;
+		if (perMs > 0.0 && perMs < 5.0 && Math.floor(perMs) != perMs)
+			perMs *= 1000.0;
+
+		var amp:Float = (amplitude != null) ? FlxMath.bound(amplitude, 0.0, 1.0) : 0.85;
+
+		#if FEATURE_HAPTICS
+		if (hapticsAvailable)
+		{
+			vibrate(perMs / 1000.0, durMs / 1000.0, amp, 0.8, true);
+			return;
+		}
+		#end
+
+		try
+		{
+			lime.ui.Haptic.vibrate(Std.int(Math.max(0.0, perMs)), Std.int(Math.max(1.0, durMs)));
+		}
+		catch (e:Dynamic) {}
+	}
+
 	public static function increasingVibrate(startAmplitude:Float, targetAmplitude:Float, tweenDuration:Float = 1.0):Void
 	{
 		#if FEATURE_HAPTICS
